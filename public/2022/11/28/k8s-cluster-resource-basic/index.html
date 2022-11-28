@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head><meta name="generator" content="Hexo 3.9.0">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="让我们一起探索世界！💪 | Thumbs Up for Cloud Native 🤘">
+    <meta name="keyword" content>
+    <link rel="shortcut icon" href="/img/favicon.ico">
+
+    <title>
+        
+          ☸️ Kubernetes 集群与资源管理基础 - Alberthua 的博客 | Alberthua&#39;s Blog
+        
+    </title>
+
+    <link rel="canonical" href="https://alberthua-perl.github.io/2022/11/28/k8s-cluster-resource-basic/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/hux-blog.min.css">
+
+    <!-- Pygments Highlight CSS -->
+    <link rel="stylesheet" href="/css/highlight.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="https://cdn.staticfile.org/font-awesome/4.5.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+
+    <!-- Hux Delete, sad but pending in China
+    <link href='http://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/
+    css'>
+    -->
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- ga & ba script hoook -->
+    <script></script>
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">Alberthua Blog</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+
+                    
+
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/about/">About</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/archives/">Archives</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/tags/">Tags</a>
+                        </li>
+                        
+                    
+                    
+                </ul>
+            </div>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+
+    <!-- Main Content -->
+    
+<!-- Image to hack wechat -->
+<!-- <img src="https://alberthua-perl.github.io/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="{{ site.baseurl }}/{% if page.header-img %}{{ page.header-img }}{% else %}{{ site.header-img }}{% endif %}" width="0" height="0"> -->
+
+<!-- Post Header -->
+<style type="text/css">
+    header.intro-header{
+        background-image: url('k8s-resource-basic.svg')
+    }
+</style>
+<header class="intro-header" >
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                          <a class="tag" href="/tags/#云原生" title="云原生">云原生</a>
+                        
+                          <a class="tag" href="/tags/#Kubernetes" title="Kubernetes">Kubernetes</a>
+                        
+                    </div>
+                    <h1>☸️ Kubernetes 集群与资源管理基础</h1>
+                    <h2 class="subheading">Kubernetes cluster and resource basic</h2>
+                    <span class="meta">
+                        Posted by Alberthua on
+                        2022-11-28
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <h3 id="文档说明："><a href="#文档说明：" class="headerlink" title="文档说明："></a>文档说明：</h3><ul>
+<li>该文档使用的 Kubernetes 版本为 <code>1.12.x</code></li>
+<li>文档所示的命令可能与当前 Kubernetes 版本存在差异，请以实际使用的版本为基准！</li>
+</ul>
+<h3 id="文档目录："><a href="#文档目录：" class="headerlink" title="文档目录："></a>文档目录：</h3><ul>
+<li>Kubernetes 集群架构概览</li>
+<li>Kubernetes 集群的资源对象管理</li>
+<li>资源对象操作相关命令</li>
+</ul>
+<h3 id="Kubernetes-集群架构概览："><a href="#Kubernetes-集群架构概览：" class="headerlink" title="Kubernetes 集群架构概览："></a>Kubernetes 集群架构概览：</h3><ul>
+<li><code>API Server</code> 作为 Kubernetes 集群的网关（gateway）</li>
+<li><code>etcd</code> 键值型数据库作为 Kubernetes 集群的核心数据库</li>
+<li>Kubernetes 集群可部署为单 master 集群或多 master（常见为 3 个）的 HA 集群  <ul>
+<li>单 master 节点的 Kubernetes 集群架构示意：<br><img src="kubernetes-single-master-arch.jpg" alt="kubernetes-single-master-arch.jpg">  </li>
+<li>多 master 节点的 Kubernetes 集群架构示意：<br><img src="kubernetes-ha-arch-demo.jpg" alt="kubernetes-ha-arch-demo.jpg">  <blockquote>
+<p>👉 该示例中将 etcd 集群分别部署于 3 个 master 节点上。</p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li>Kubernetes 中的接口规范：  <ul>
+<li><code>CRI</code>：Container Runtime Interface（容器运行时接口）  </li>
+<li><code>gRPC</code>：Google Remote Process Call（Google 发布的远程过程调用框架）  </li>
+<li><code>OCI</code>：Open Container Initiative（开放容器标准）  </li>
+<li><code>CNI</code>：Container Network Interface（容器网络接口）  </li>
+<li><code>CSI</code>：Container Storage Interface（容器存储接口）  </li>
+<li>以上各接口规范在集群中组件之间的调用示意：<br><img src="kubernetes-interface-1.jpg" alt="kubernetes-interface-1.jpg"><img src="kubernetes-interface-2.jpg" alt="kubernetes-interface-2.jpg"></li>
+</ul>
+</li>
+<li>Kubernetes 集群中的网络概述：  <ul>
+<li>集群中的通信种类：    <ul>
+<li>同一 Pod 资源对象中容器间的通信    </li>
+<li>各 Pod 资源对象彼此间的通信    <blockquote>
+<p>👉 Pod 间在同一节点上通信或彼此跨节点间通信    </p>
+</blockquote>
+</li>
+<li>Pod 资源对象与 Service 资源对象间的通信    </li>
+<li>集群外部的流量与 Service 资源对象间的通信  </li>
+</ul>
+</li>
+<li>集群网络规划部署：    <ul>
+<li>Kubernetes 集群主机间的网络    </li>
+<li>Service 资源对象定义的 <code>ClusterIP</code> 网络    </li>
+<li>由不同 <code>CNI</code> 定义的 Pod 间的通信网络</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Kubernetes 集群的客户端类型：  <ul>
+<li>Kubernetes 的 API Server 的客户端：<br>集群及项目管理人员、开发人员、集群中与 API Server 交互的组件  </li>
+<li>Kubernetes 的访问 Pod 的客户端：<br>集群外的普通用户、命名空间内的 Pod 应用（Pod Client）</li>
+</ul>
+</li>
+</ul>
+<h3 id="Kubernetes-集群的资源对象管理："><a href="#Kubernetes-集群的资源对象管理：" class="headerlink" title="Kubernetes 集群的资源对象管理："></a>Kubernetes 集群的资源对象管理：</h3><ul>
+<li>kubectl 命令管理资源对象的 3 种方式：  <ul>
+<li>陈述式命令：使用命令行选项管理  </li>
+<li>陈述式资源配置文件：使用 <code>kubectl create</code> 命令创建  </li>
+<li>声明式资源配置文件：使用 <code>kubectl apply</code> 命令创建</li>
+</ul>
+</li>
+<li>Kubernetes 使用 <code>Deployment</code> 资源对象（Pod 控制器）部署与管理前端无状态（<code>Stateless</code>）的 Pod 资源对象，而 Deployment 资源对象并不直接作用于 Pod 资源对象，而是使用 <code>ReplicaSet</code> 资源对象进行部署与管理。</li>
+<li>Deployment 资源对象是 ReplicaSet 资源对象之上的 Pod 控制器，两者都为工作负载型（workload）资源对象。</li>
+<li>使用 Deployment 资源对象部署的 Pod 资源对象都具有 <code>run=&lt;pod_controller_name&gt;</code> 的标签（label）。</li>
+<li>Pod 资源对象的名称：<code>&lt;replicaset_name&gt;-&lt;random_char&gt;</code><br><img src="pod-name.jpg" alt="pod-name.jpg"></li>
+<li>Pod资源对象的状态：<br>Pending、Running、Succeeded、Failed、Unknown</li>
+<li>Pod 容器日志信息管理：  <ul>
+<li>🐳 Kubernetes 集群中 Pod 容器日志信息默认以标准错误（<code>standard error</code>）输出至控制台，可使用 kubectl logs 命令查看容器日志信息。  </li>
+<li>必须使用集中式的日志收集系统管理 Pod 容器日志。  </li>
+<li>使用 kubectl logs 命令只能查看存在的 Pod 资源对象中的容器日志，不能查看已删除的Pod 资源对象日志。</li>
+</ul>
+</li>
+<li><p>Kubernetes 的 <code>API</code> 资源概述：  </p>
+<ul>
+<li>API Server 提供基于 <code>RESTful</code> 风格架构的编程接口，接收基于 <code>HTTP/HTTPS</code> 的客户端组件请求，并将其处理返回。  </li>
+<li>Kubernetes 的其他组件被抽象为标准的 REST 资源，可以使用标准的 <code>JSON</code> 序列化数据对 其管理与控制。  </li>
+<li>API 资源类型包括：    <ul>
+<li>对象类（Object）    </li>
+<li>列表类（List）    </li>
+<li>简单类（Simple）  </li>
+</ul>
+</li>
+<li>Kubernetes 中的 API 资源类型绝大多数以对象的方式存在，对象是资源运行时生成的实例，且为持久化的实体。  </li>
+<li>API 对应于资源类型的 <code>URI</code>，即资源类型的 <code>YAML</code> 配置文件中的 <code>selfLink</code> 字段，其状态存储于后端 etcd 数据库中。  <blockquote>
+<p>💥 Kubernetes v1.20 版本开始，默认删除了 <code>metadata.selfLink</code> 字段，然而，部分应用仍然依赖于该字段，如 <code>nfs-client-provisioner</code>。如果仍然要继续使用这些应用，需要重新启用该字段。  </p>
+</blockquote>
+</li>
+<li>🚀 若集群使用 <code>kubeadm</code> 组件部署，可修改控制平面（control plan）各节点的 <code>/etc/kubernetes/manifests/kube-apiserver.yaml</code> 文件，在其中添加 <code>--feature-gates=RemoveSelfLink=false</code> 选项以启用该字段，如下所示：<br><img src="kubernetes-apiserver-manifest.jpg" alt="kubernetes-apiserver-manifest.jpg">    <ul>
+<li>关于 selfLink 的说明可参考 <a href="https://kuboard.cn/install/faq/selfLink.html" target="_blank" rel="noopener">该链接</a>    </li>
+<li>关于 kube-apiserver 命令的选项可参考 <a href="https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/" target="_blank" rel="noopener">kube-apiserver 官方文档</a>  </li>
+</ul>
+</li>
+<li>Kubernetes 将 API 进行逻辑分组，称为 API 群组（API group）。  </li>
+<li>🚀 Kubernetes 的 API Server 支持相同的 API 群组中使用不同的版本，因此能在不同的版本中使用同名的资源类型，从而在稳定版本与新的实验版本中能以不同的特性使用同名的资源类型。  <blockquote>
+<p>关于 API 群组的分类与详细信息可参考 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/" target="_blank" rel="noopener">该链接</a>  </p>
+</blockquote>
+</li>
+<li><p>Kubernetes 的 API 层级结构：    </p>
+<ul>
+<li>核心 API 群组（core group）：      <ul>
+<li>REST 路径：<code>/api/v1</code>      </li>
+<li>资源配置文件中的字段：<code>apiVersion: v1</code>    </li>
+</ul>
+</li>
+<li>命名的 API 群组（named group）：      <ul>
+<li>REST 路径：<code>/apis/&lt;group_name&gt;/&lt;version&gt;</code>      </li>
+<li>资源配置文件中的字段：<code>apiVersion: &lt;group_name&gt;/&lt;version&gt;</code>    </li>
+</ul>
+</li>
+<li>命名空间级别的 REST API：      <ul>
+<li>REST 路径：<br><code>/apis/&lt;group_name&gt;/&lt;version&gt;/namespaces/&lt;namespace&gt;/&lt;resource_kind&gt;/&lt;object_name&gt;</code>      </li>
+<li>示例：<br><code>/apis/apps/v1/namespaces/default/deployments/nginx-deploy</code>    </li>
+</ul>
+</li>
+<li><p>访问 Kubernetes RESTful API 的方法：      </p>
+<ul>
+<li>kubectl get 命令行方式：<br><img src="kubectl-get-raw-json.jpg" alt="kubectl-get-raw-json.jpg">      </li>
+<li><p>kubectl proxy 命令行方式：        </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl proxy --port=&lt;port&gt;</span><br><span class="line"><span class="comment"># 启动本地主机为代理网关，使其能够访问 API Server 的 REST API，该端口不可被占用。</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>kubectl proxy 方式使用 kubectl 打开本地 <code>unix socket</code>，使 curl 命令通过进程间通信（IPC）的方式与代理网关通信，实现与 API Server 的交互。        </p>
+</li>
+<li>Kubernetes 集群默认使用 <code>HTTPS</code> 的方式访问 API Server 的 REST API。        </li>
+<li>使用 kubectl proxy 命令启动本地主机为代理网关后，在另一终端中即可使用 curl 命令以 HTTP 的方式访问，如下所示：          <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ curl -s http://localhost:8080/api/v1/namespaces/default</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>Kubernetes 的 API 资源分类：  </p>
+<ul>
+<li>工作负载类型（workload）：    <ul>
+<li>ReplicationController（rc）    </li>
+<li>ReplicaSet    </li>
+<li>Deployment    </li>
+<li><code>StatefulSet</code>    </li>
+<li>DaemonSet    </li>
+<li>Job  </li>
+</ul>
+</li>
+<li>服务发现与负载均衡（Discovery &amp; LB）：    <ul>
+<li>Service    </li>
+<li><code>Ingress</code>  </li>
+</ul>
+</li>
+<li>配置与存储（Config &amp; Storage）：    <ul>
+<li>Secret    </li>
+<li><code>ConfigMap</code>    </li>
+<li>PersistentVolumeClaim（pvc）  </li>
+</ul>
+</li>
+<li>集群（Cluster）：    <ul>
+<li>Namespace    </li>
+<li>Node    </li>
+<li>Role、ClusterRole、ClusterRoleBinding、RoleBinding    </li>
+<li>PersistentVolume（pv）  </li>
+</ul>
+</li>
+<li>元数据（Metadata）：    <ul>
+<li><code>HorizontalPodAutoscaler</code>（HPA）    </li>
+<li>LimitRange</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Kubernetes 资源配置清单基础：  <ul>
+<li>Kubernetes 资源配置清单的主要一级字段：<br>apiVersion、kind、metadata、spec、status  </li>
+<li>其中 metadata、spec 与 status 为嵌套字段：    <ul>
+<li><code>metadata</code>：记录资源的元数据数据    </li>
+<li><code>spec</code>：记录资源的用户期望状态（desired）信息，由用户自定义并维护。    </li>
+<li><code>status</code>：      <ul>
+<li>记录活动对象的当前状态（实际状态），由 Kubernetes 自动填充并维护，对用户为只读字段。      <blockquote>
+<p>👉 活动对象是指由 Kubernetes 创建的资源对象。      </p>
+</blockquote>
+</li>
+<li>该字段记录的活动对象的状态应与 spec 字段的状态相同，或者两者无限接近。    </li>
+</ul>
+</li>
+<li>💥 Kubernetes 的 API Server 只能接收并响应 <code>JSON</code> 对象，YAML 格式的对象需经过 API Server 转换后才能被接收处理。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Kubernetes 资源管理方式：  <ul>
+<li>Kubernetes 的 API Server 支持声明式编程（<code>delarative programming</code>）与陈述式编程（<code>impreative programming</code>）。  </li>
+<li>推荐优先使用 <code>apply</code> 或 <code>patch</code> 命令的声明式对象配置。  </li>
+<li>可将不同资源类型的对象配置信息写在同一个资源配置清单中，并使用 <code>---</code> 符号将每个资源对象配置信息进行资源分割。  </li>
+<li>使用 <code>Git</code> 版本控制系统管理资源配置清单文件。</li>
+</ul>
+</li>
+<li>命名空间的资源管理：  <ul>
+<li>命名空间（namespace）通过将不同资源进行隔离，使命名空间的资源被不同的用户、租户与项目使用。  </li>
+<li>命名空间只隔离不同的资源，不隔离跨命名空间的 Pod 间的通信，因此单纯使用命名空间的隔离机制为软隔离，而对网络流量的隔离需要由网络策略（<code>network policy</code>）来实现。  <blockquote>
+<p>✅ 不同的 CNI 插件可提供不同的网络策略功能，如 Calico、OVS plugin 等。  </p>
+</blockquote>
+</li>
+<li>创建自定义的命名空间，如下所示：    <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl create namespace &lt;namespace_name&gt;</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="资源对象操作相关命令："><a href="#资源对象操作相关命令：" class="headerlink" title="资源对象操作相关命令："></a>资源对象操作相关命令：</h3><ul>
+<li><p>API 版本与资源对象解释命令：  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl --<span class="built_in">help</span></span><br><span class="line"><span class="comment"># 查看 kubectl 命令的使用方法</span></span><br><span class="line"></span><br><span class="line">$ kubectl api-versions</span><br><span class="line"><span class="comment"># 查看 API Server 支持的 API 版本，并以 group/version 的格式返回。</span></span><br><span class="line"></span><br><span class="line">$ kubectl api-resources</span><br><span class="line"><span class="comment"># 查看 API Server 支持的 API 资源类型</span></span><br><span class="line"></span><br><span class="line">$ kubectl explain &lt;resource_type&gt;</span><br><span class="line"><span class="comment"># 查看 API 资源类型的解释信息</span></span><br><span class="line"></span><br><span class="line"><span class="comment">### 示例 ###</span></span><br><span class="line">$ kubectl explain pods.spec.containers.imagePullPolicy</span><br><span class="line"><span class="comment"># 查看 Pod 资源对象相关配置字段的详细信息</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>创建 <code>Deployment</code> 资源对象并运行 Pod：  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl run &lt;deployment_name&gt; \</span><br><span class="line">  --image=&lt;image_name&gt;:&lt;tag&gt; --replicas=&lt;number&gt; --port=&lt;port&gt; \</span><br><span class="line">  -n &lt;namespace&gt;</span><br><span class="line"><span class="comment"># 陈述式命令创建 Deployment 资源对象</span></span><br><span class="line"><span class="comment"># 一般情况下，不直接创建 Pod 资源对象，而是通过 Pod 控制器创建并管理 Pod 对象。</span></span><br><span class="line"><span class="comment"># kubectl run 常用命令选项：kubectl run --help</span></span><br><span class="line"><span class="comment">#   --image=''                   Pod 资源对象中容器镜像的名称</span></span><br><span class="line"><span class="comment">#   --port=''                    Pod 资源对象中容器的端口号</span></span><br><span class="line"><span class="comment">#   --replicas=''                Pod 资源对象的副本数</span></span><br><span class="line"><span class="comment">#   --record=[false|true]        将当前的 kubectl 命令记录于资源对象的</span></span><br><span class="line"><span class="comment">#                                annotation 注释中</span></span><br><span class="line"><span class="comment">#   --save-config=[false|true]   将当前的资源对象配置信息记录于 annotation</span></span><br><span class="line"><span class="comment">#                                注释中，默认为 false，在使用 kubectl apply</span></span><br><span class="line"><span class="comment">#                                时有用。          </span></span><br><span class="line"><span class="comment">#  --restart=[Always|OnFailure|Never]</span></span><br><span class="line"><span class="comment">#                                Pod 资源对象的重启策略，默认为 Always。            </span></span><br><span class="line"><span class="comment">#  --dry-run=[false|true]        测试运行（干运行），默认为 false。</span></span><br><span class="line"><span class="comment">#  -n，--namespace=''            资源对象所在的命名空间</span></span><br><span class="line"></span><br><span class="line"><span class="comment">### 示例 ###</span></span><br><span class="line">$ kubectl run nginx-deploy \</span><br><span class="line">  --image=nginx:v1.12 --replicas=2 --port=80 -n default</span><br><span class="line"><span class="comment"># 创建 Deployment 资源对象 nginx-deploy</span></span><br><span class="line"></span><br><span class="line">$ kubectl run client \</span><br><span class="line">  --image=busybox:latest --restart=Never --replicas=1 \</span><br><span class="line">  -it -n default -- /bin/sh</span><br><span class="line"><span class="comment"># 指定 --restart=Never 选项时，只创建 Pod 资源对象 client 并进入 Pod 交互式界面。             </span></span><br><span class="line"><span class="comment"># 退出交互式界面后，终止 Pod 资源对象运行，并进入 Completed 状态。</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>创建 Service 资源对象与暴露应用端口：  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl expose deployment &lt;deployment_name&gt; \</span><br><span class="line">  --name=&lt;service_name&gt; --port=&lt;port&gt; --target-port=&lt;port_num&gt; \</span><br><span class="line">  -n &lt;namespace&gt;</span><br><span class="line"><span class="comment"># 创建 Service 资源对象，对外暴露并关联 Pod 资源对象的 Pod IP 与端口。</span></span><br><span class="line"><span class="comment"># kubectl expose 常用命令选项：kubectl expose --help</span></span><br><span class="line"><span class="comment">#   --name=''                创建的 Service 资源对象名称</span></span><br><span class="line"><span class="comment">#   --port=''                Service 资源对象的端口号</span></span><br><span class="line"><span class="comment">#   --target-port=''         Service 资源对象关联的后端 Pod 资源对象的端口号</span></span><br><span class="line"><span class="comment">#   -n，--namespace=''       资源对象所在的命名空间</span></span><br><span class="line"></span><br><span class="line"><span class="comment">### 示例 ###</span></span><br><span class="line">$ kubectl expose deployment nginx-deploy \</span><br><span class="line">  --name=nginx-svc --port=8080 --target-port=80 -n default</span><br><span class="line"><span class="comment"># 创建名称为 nginx-svc 的 Service 资源对象</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>查看与操作相关资源对象：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl get pods,services -n &lt;namespace&gt; -o wide</span><br><span class="line"><span class="comment"># 查看命名空间中 Pod 与 Service 资源对象的详细信息（逗号分隔）</span></span><br><span class="line"></span><br><span class="line">$ kubectl get &lt;resource_type&gt; \</span><br><span class="line">  -n &lt;namespace&gt; -o &#123;yaml|json|jsonpath|wide|custom-columns=...&#125;</span><br><span class="line"><span class="comment"># 查看命名空间中的资源对象信息，并以 YAML、JSON、完整格式或自定义格式输出。</span></span><br><span class="line"></span><br><span class="line"><span class="comment">### 示例 ###</span></span><br><span class="line">$ kubectl get pods \</span><br><span class="line">  -o custom-columns=NAME:metadata.name,STATUS:status.phase </span><br><span class="line">  -n kube-system</span><br><span class="line"><span class="comment"># 查看 kube-system 命名空间中 Pod 资源对象的名称与状态信息，以自定义格式输出。</span></span><br><span class="line"></span><br><span class="line">$ kubectl logs &lt;pod_name&gt; [-c &lt;container_name&gt;] -n &lt;namespace&gt;</span><br><span class="line"><span class="comment"># 查看命名空间中 Pod 资源对象中的容器日志信息</span></span><br><span class="line"><span class="comment"># Pod 资源对象中存在多个容器时，使用 -c 选项指定容器。</span></span><br><span class="line"></span><br><span class="line">$ kubectl <span class="built_in">exec</span> &lt;pod_name&gt; \</span><br><span class="line">  [-c &lt;container_name&gt;] -n &lt;namespace&gt; -- &lt;<span class="built_in">command</span>&gt; &lt;opts&gt; &lt;args...&gt;</span><br><span class="line"><span class="comment"># 执行命名空间中 Pod 资源对象中的命令</span></span><br><span class="line"><span class="comment"># Pod 资源对象中存在多个容器时，使用 -c 选项指定容器。</span></span><br><span class="line"></span><br><span class="line">$ kubectl delete \</span><br><span class="line">  &lt;resource_type&gt; &lt;resource_name&gt; -l &lt;key&gt;=&lt;value&gt; -n &lt;namespace&gt;</span><br><span class="line"><span class="comment"># 删除命名空间中具有指定标签的资源对象</span></span><br><span class="line"></span><br><span class="line"><span class="comment">### 示例 ###</span></span><br><span class="line">$ kubectl delete deployment myapp --cascade=<span class="literal">false</span> -n default</span><br><span class="line"><span class="comment"># 删除 default 命名空间中名为 myapp 的 Deployment 资源对象，但不删除其创建的 Pod。    </span></span><br><span class="line"></span><br><span class="line">$ kubectl create -f &lt;file&gt;.yaml|&lt;dir&gt;|&lt;url&gt;</span><br><span class="line"><span class="comment"># 使用陈述式命令 create 创建不同的 API 资源对象</span></span><br><span class="line"></span><br><span class="line">$ kubectl apply -f &lt;file&gt;.yaml|&lt;dir&gt;|&lt;url&gt; </span><br><span class="line"><span class="comment"># 使用声明式命令 apply 创建、更新与替换不同的 API 资源对象</span></span><br><span class="line"><span class="comment"># 注意：</span></span><br><span class="line"><span class="comment">#   1. 声明式对象配置管理具有高级的补丁更新机制，将相应的配置信息记录于 annotation 注释中。</span></span><br><span class="line"><span class="comment">#   2. Kubernetes 建议使用声明式对象配置方式！ </span></span><br><span class="line"></span><br><span class="line">$ kubectl delete -f &lt;file&gt;.yaml</span><br><span class="line"><span class="comment"># 删除该 YAML 配置文件创建的 API 资源对象</span></span><br><span class="line"></span><br><span class="line">$ kubectl scale deployment &lt;deployment_name&gt; --replicas=&lt;number&gt; -n &lt;namespace&gt;</span><br><span class="line"><span class="comment"># 指定命名空间中扩容或缩容 Pod 资源对象的副本数目</span></span><br><span class="line"></span><br><span class="line"><span class="comment">### 示例 ###</span></span><br><span class="line">$ kubectl scale deployment myapp --replicas=3 -n default</span><br><span class="line"><span class="comment"># 指定 default 命名空间中扩容或缩容 Pod 资源对象的副本数目为 3 个</span></span><br><span class="line"><span class="comment"># 注意：</span></span><br><span class="line"><span class="comment">#   扩容或缩容 Pod 资源对象副本数目的方法：</span></span><br><span class="line"><span class="comment">#   1. 通过该命令行方式进行扩容或缩容</span></span><br><span class="line"><span class="comment">#   2. 使用如下命令更改 Deployment 资源对象的配置信息，更改后实时生效：</span></span><br><span class="line"><span class="comment">#      $ kubectl edit deployment myapp -n default</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+
+
+                <hr>
+
+                
+
+                <ul class="pager">
+                    
+                    
+                        <li class="next">
+                            <a href="/2022/11/28/kani-deploy-k8s/" data-toggle="tooltip" data-placement="top" title="Kani - Ansible 快速部署与管理 Kubernetes v1.22.1">Next Post &rarr;</a>
+                        </li>
+                    
+                </ul>
+
+                
+
+                
+
+            </div>
+    <!-- Side Catalog Container -->
+        
+
+    <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5><a href="/tags/">FEATURED TAGS</a></h5>
+                    <div class="tags">
+                       
+                          <a class="tag" href="/tags/#云原生" title="云原生">云原生</a>
+                        
+                          <a class="tag" href="/tags/#Kubernetes" title="Kubernetes">Kubernetes</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+                <hr>
+                <h5>FRIENDS</h5>
+                <ul class="list-inline">
+
+                    
+                        <li><a href="https://github.com/Alberthua-Perl" target="_blank">Alberthua&#39;s GitHub</a></li>
+                    
+                </ul>
+                
+            </div>
+
+        </div>
+    </div>
+</article>
+
+
+
+
+
+
+
+
+
+    <!-- Footer -->
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://github.com/Alberthua-Perl">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; Alberthua Blog 2022 
+                    <br>
+                    Theme by <a href="http://huangxuan.me">Hux</a> 
+                    <span style="display: inline-block; margin: 0 5px;">
+                        <i class="fa fa-heart"></i>
+                    </span> 
+                    Ported by <a href="http://blog.kaijun.rocks">Kaijun</a> | 
+                    <iframe
+                        style="margin-left: 2px; margin-bottom:-5px;"
+                        frameborder="0" scrolling="0" width="91px" height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=kaijun&repo=hexo-theme-huxblog&type=star&count=true" >
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/js/jquery.min.js"></script>
+
+<!-- Bootstrap Core JavaScript -->
+<script src="/js/bootstrap.min.js"></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/js/hux-blog.min.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- 
+     Because of the native support for backtick-style fenced code blocks 
+     right within the Markdown is landed in Github Pages, 
+     From V1.6, There is no need for Highlight.js, 
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0  
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/    
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("https://alberthua-perl.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("https://cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- Side Catalog -->
+
+
+
+
+
+<!-- Image to hack wechat -->
+<img src="https://alberthua-perl.github.io/img/icon_wechat.png" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work -->
+
+</body>
+
+</html>
