@@ -1,3 +1,5 @@
-## Alberthua Personal GitHub Site
+## Backup of Alberthua Blog original files
 
-👉 GitHub page located at https://alberthua-perl.github.io
+- `blog-origin` branch used to backup Alberthua Blog original files
+
+- 🔗 Blog located at https://alberthua-perl.github.io
