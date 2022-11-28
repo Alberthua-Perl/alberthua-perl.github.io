@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head><meta name="generator" content="Hexo 3.9.0">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="让我们一起探索世界！💪 | Thumbs Up for Cloud Native 🤘">
+    <meta name="keyword" content>
+    <link rel="shortcut icon" href="/img/favicon.ico">
+
+    <title>
+        
+          📦 Fedora CoreOS 及 RHCOS 概述与应用 - Alberthua 的博客 | Alberthua&#39;s Blog
+        
+    </title>
+
+    <link rel="canonical" href="https://alberthua-perl.github.io/2022/11/28/fcos-rhcos-basic-usage/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/hux-blog.min.css">
+
+    <!-- Pygments Highlight CSS -->
+    <link rel="stylesheet" href="/css/highlight.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="https://cdn.staticfile.org/font-awesome/4.5.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+
+    <!-- Hux Delete, sad but pending in China
+    <link href='http://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/
+    css'>
+    -->
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- ga & ba script hoook -->
+    <script></script>
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">Alberthua Blog</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+
+                    
+
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/about/">About</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/archives/">Archives</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/tags/">Tags</a>
+                        </li>
+                        
+                    
+                    
+                </ul>
+            </div>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+
+    <!-- Main Content -->
+    
+<!-- Image to hack wechat -->
+<!-- <img src="https://alberthua-perl.github.io/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="{{ site.baseurl }}/{% if page.header-img %}{{ page.header-img }}{% else %}{{ site.header-img }}{% endif %}" width="0" height="0"> -->
+
+<!-- Post Header -->
+<style type="text/css">
+    header.intro-header{
+        background-image: url('fedora-coreos-bg.jpg')
+    }
+</style>
+<header class="intro-header" >
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                          <a class="tag" href="/tags/#Linux" title="Linux">Linux</a>
+                        
+                          <a class="tag" href="/tags/#OpenShift" title="OpenShift">OpenShift</a>
+                        
+                          <a class="tag" href="/tags/#coreos" title="coreos">coreos</a>
+                        
+                    </div>
+                    <h1>📦 Fedora CoreOS 及 RHCOS 概述与应用</h1>
+                    <h2 class="subheading">Fedora CoreOS &amp; RHCOS Basic and Usage</h2>
+                    <span class="meta">
+                        Posted by Alberthua on
+                        2022-11-28
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <h3 id="文档目录："><a href="#文档目录：" class="headerlink" title="文档目录："></a>文档目录：</h3><ul>
+<li>关键技术点</li>
+<li>Fedora CoreOS 及 RHCOS 介绍与特性</li>
+<li>Ignition 在 FCOS 或 RHCOS 中的工作特点</li>
+<li>Ignition 对 OpenShift 4 集群主机的处理顺序</li>
+<li>Fedora CoreOS 的安装环境与工具说明</li>
+<li>Fedora CoreOS 的定制化安装与验证</li>
+<li>参考链接</li>
+</ul>
+<h3 id="关键技术点："><a href="#关键技术点：" class="headerlink" title="关键技术点："></a>关键技术点：</h3><ul>
+<li>以下技术点在文中将根据 Fedora CoreOS 及 RHCOS 中展开说明：  <ul>
+<li>ignition, butane, ignition-validate  </li>
+<li>ostree, rpm-tree,zincati, bootupd</li>
+</ul>
+</li>
+</ul>
+<h3 id="Fedora-CoreOS-及-RHCOS-介绍与特性："><a href="#Fedora-CoreOS-及-RHCOS-介绍与特性：" class="headerlink" title="Fedora CoreOS 及 RHCOS 介绍与特性："></a>Fedora CoreOS 及 RHCOS 介绍与特性：</h3><ul>
+<li>在 OpenShift 4 安装过程会自动安装 CoreOS 的商业版 Red Hat Enterprise Linux CoreOS（简称 <code>RHCOS</code>）。根据 OpenShift 4 的文档说明，RHCOS 无法独立运行安装，它必须和 OpenShift 4 一起运行（因此 RHCOS 没有单独的订阅）。</li>
+<li>😃 不过好在 CoreOS 还提供了可以独立运行的社区版 <code>Fedora CoreOS</code>（简称 <code>FCOS</code>）可以完全免费使用。由于 FCOS 可以无需 OpenShift 4 也可以独立安装运行，因此使用 FCOS 作为研究环境，而相关操作基本都可适用 RHCOS 环境。</li>
+<li>FCOS/RHCOS 是 Red Hat 在收购 CoreOS 公司后结合 <code>CoreOS Container Linux</code> 和 <code>Fedora Atomic Host</code> 的优点推出的新一代容器操作系统，其目标是提供最佳的容器主机，从而能安全、大规模地运行容器化的工作负载。</li>
+<li>FCOS/RHCOS 将 <a href="https://github.com/coreos/ignition" target="_blank" rel="noopener">Ignition</a>（点火） 与 rpm-ostree 等技术相集成，是一个自动更新的、最小的、整体的、对运行容器和 Kubernetes 进行了优化的操作系统，因为它们更符合 “不可变架构”（<code>Immutable Infrastructure</code>）理念，因此成为 Red Hat 推荐的 OpenShift 4 底层操作系统。</li>
+<li>FCOS/RHCOS 的安装及配置过程和一般的 RHEL 稍有差别，需要通过 Ignition 配置文件在安装的时候初始化网络、存储、内核、用户等方面的配置。</li>
+<li>FCOS 的设计理念：  <ul>
+<li>🐳 由于容器允许将工作负载重复部署到生产环境中，并自动扩展以满足需求。容器提供的隔离意味着主机操作系统可以很小，它只需要一个 <code>Linux kernel</code>、<code>systemd</code>、<code>container runtime</code> 和一些附加服务（如 SSH 服务器）。  </li>
+<li>FCOS 是专门为容器工作负载而设计的，无需定期维护，可以使用最新的操作系统改进、bug 修复和安全自动更新，其使用 Ignition 为自身提供服务，使用 <code>Podman</code> 和 <code>Moby</code> 运行容器，并使用 <code>rpm-ostree</code> 自动进行原子更新。<blockquote>
+<p>❗ 注意：</p>
+<ol>
+<li><p>FCOS 支持 <code>CRI-O</code> 作为容器引擎，常用于 OpenShift 4 的底层容器运行时，一般不直接使用 CRI-O 运行容器，OpenShift 4 可通过 <code>CRI</code> 接口创建与管理 Pod。</p>
+</li>
+<li><p>可通过 <code>crictl</code> 命令行工具创建与管理容器及 Pod，但一般情况下用于容器或 pod 的调试而非容器或 pod 的创建。</p>
+</li>
+</ol>
+</blockquote>
+</li>
+</ul>
+</li>
+<li>FCOS 调配不可变架构：  <ul>
+<li>在系统首次引导（<code>first boot</code>）阶段，FCOS 使用 Ignition 调配系统。  </li>
+<li>Ignition 读取用户提供的数据或远程 URL 地址提供的 Ignition 配置文件，并且使用它创建磁盘分区、文件系统、用户、受信任的用户 SSH 公钥、文件与系统单元文件（systemd units）等。  </li>
+<li>调配主机的方式：    <ul>
+<li>编辑基于 YAML 格式的 <code>Fedora CoreOS Config</code>（FCC）文件，该文件指定主机的期望配置，FCC 支持所有的 Ignition 功能，也提供额外的语法。    </li>
+<li>使用 <code>Fedora CoreOS Config Transpiler (Butane)</code> 工具将 FCC 文件（<code>.fcc</code>）转换为 Ignition 配置文件（<code>.ign</code>）。    </li>
+<li>启动 FCOS 主机并将 Ignition 配置文件同步至主机中调配系统的安装。    <blockquote>
+<p>💁‍♂️ 调配主机的方法：</p>
+<ol>
+<li><p>使用 PXE 引导并与指定 Ignition 配置文件调配安装主机。</p>
+</li>
+<li><p>将 Ignition 配置文件同步至使用 FCOS live ISO 引导启动的主机中，再使用 <code>coreos-installer</code> 工具调配安装主机（本文使用此方法）。  </p>
+</li>
+</ol>
+</blockquote>
+</li>
+</ul>
+</li>
+<li>FCOS 被设计为不可变架构。在主机被调配之后，不应该更改 /etc 目录或重新配置主机，相反，更改 FCC 文件并且使用该文件调配替换的主机。  </li>
+<li>🐳 这种方式与容器管理相似：容器镜像不可被原地更新，而是重头构建与重新部署。该方式在负载增加时容易横向扩容。只需简单地使用相同的 Ignition 配置文件来启动其他主机。</li>
+</ul>
+</li>
+<li><a href="https://getfedora.org/en/coreos/download?tab=metal_virtualized&amp;stream=stable&amp;arch=x86_64" target="_blank" rel="noopener">FCOS 发布版本</a>：<img src="fedora-coreos-release-version.png" alt="fedora-coreos-release-version.png">  <ul>
+<li><code>testing stream</code>：<br>当前 Fedora 发行版的常规快照，加上更新。  </li>
+<li>❤ <code>stable stream</code>：<br>在测试版本可用两周后，它被发送到稳定流，在测试中发现的 <code>bug</code> 将在发布稳定流之前被修复。  </li>
+<li><code>next stream</code>：<br>即将发布的 Fedora 版本的常规快照，允许有额外的时间测试较大的更改。<br>👉 每个 stream 每 2 周发布一次，更新内容会从一个 stream 推广到另一个 stream（<code>next -&gt; testing -&gt; stable</code>）。这样落地在 stable stream 中的更新就有机会经过长时间的测试。<br>👉 所有三个 stream 都收到了安全更新和关键的错误修复，并旨在安全地用于生产使用。大多数机器应该运行 <code>stable stream</code>，因为它接受最多的测试。但是，用户应该在 next stream 上运行他们的部分节点，并向问题跟踪器报告问题。这有助于确保只影响特定工作负载或特定硬件的 bug 在稳定之前得到修复。</li>
+</ul>
+</li>
+<li>RHCOS 的关键特性：  <ul>
+<li>系统基于 RHEL 开发  </li>
+<li>可控制的不可变架构（<code>controlled immutability</code>）  </li>
+<li>默认使用 <code>CRI-O</code> 容器运行时  </li>
+<li>可使用容器工具集管理容器或 Pod（包括 <code>podman</code>、<code>skopeo</code> 与 <code>crictl</code> 等）  </li>
+<li>🔥 使用 <code>rpm-ostree</code> 实现事务性更新升级 <blockquote>
+<p>❗ 注意：</p>
+<ol>
+<li><p><code>OSTree</code> 是一个用于对基于 Linux 的操作系统进行版本更新的系统，它可以被视为 “面向操作系统二进制文件的 git”，它被 endless OS、Flatpak、Fedora、CentOS、Atomic Host 和 GNOME 等项目用来持续交付，有关 OSTree 更多详细的说明可参考 <a href="https://ostreedev.github.io/ostree/" target="_blank" rel="noopener">libostree 官方文档</a>。</p>
+</li>
+<li><p>rpm-ostree 是一个混合镜像/包系统，以命令行与守护进程的方式运行，可将软件包以分层的形式构建在 OSTree 之上，将软件包作为系统的扩展，关于 rpm-ostree 更多详细的说明可参考 <a href="https://coreos.github.io/rpm-ostree" target="_blank" rel="noopener">rpm-ostree 官方文档</a>。</p>
+</li>
+<li><p>FCOS 中的 <code>zincati</code> 服务（<code>zincati.service</code>）可检测系统的状态，通过 <code>rpm-ostreed</code> 守护进程进行更新，若其发现具有新的系统更新将自动更新系统，可将该服务关闭以禁用此功能。  </p>
+</li>
+</ol>
+</blockquote>
+</li>
+<li>🔥 针对 <code>fireware</code> 与 <code>bootloader</code> 的 <code>bootupd</code> 更新器，bootupd 可以守护进程 <code>bootupd.service</code> 的方式运行。</li>
+<li>OpenShift 4 集群通过 <code>Machine Config Operator (MCO)</code> 更新 RHCOS</li>
+</ul>
+</li>
+</ul>
+<h3 id="Ignition-在-FCOS-或-RHCOS-中的工作特点："><a href="#Ignition-在-FCOS-或-RHCOS-中的工作特点：" class="headerlink" title="Ignition 在 FCOS 或 RHCOS 中的工作特点："></a>Ignition 在 FCOS 或 RHCOS 中的工作特点：</h3><ul>
+<li>Ignition 是由 FCOS/RHCOS 使用的在系统初始化配置过程（<code>initramfs</code>）中操纵磁盘的工具，其可完成常见的磁盘任务，包括磁盘分区、格式化分区、写文件与配置用户等。</li>
+<li>在系统首次引导时（first boot），Ignition 读取安装介质或所指定的 Ignition 配置文件所在的路径。</li>
+<li>✨ Ignition 的调配方式：<br>Ignition 配置文件（Ignition config file）或称点火配置文件</li>
+<li>Ignition 配置与 <code>cloud-init</code> 或 <code>Linux Anaconda kickstart</code> 配置系统极其相似，但其具有自身的特点：  <ul>
+<li>由于 Ignition 能进行磁盘分区、设置文件系统与执行主机永久文件系统的其他改变，因此，在安装 FCOS/RHCOS 过程中 Ignition 运行于与系统相隔离的 <code>initial RAM disk</code> 中。与之相对的，cloud-init 作为初始化系统的一部分不能容易地实现磁盘的分区。  </li>
+<li>✨ Ignition 与 cloud-init 对比：<ul>
+<li>Ignition：<ul>
+<li>工作阶段：首次引导安装期间</li>
+<li>工作次数：一次</li>
+<li>功能实现：系统磁盘操作等</li>
+<li>常用场景：安装部署</li>
+</ul>
+</li>
+<li>cloud-init：<ul>
+<li>工作阶段：任意系统引导期间</li>
+<li>工作次数：多次</li>
+<li>功能实现：系统配置等</li>
+<li>常用场景：系统配置</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Ignition 用于初始化系统而不是更改已存在的系统，OpenShift 4 使用 <code>Machine Config Operator</code> 完成所有主机的配置。  </li>
+<li>Ignition 以声明式方式（declarative configuration）检查配置中的所有配置项目以满足指定的要求。  </li>
+<li>✨ 在 Ignition 完成主机配置后，kernel 保持运行但丢弃 initial RAM disk，并且转向（pivot to）磁盘上已安装的系统中。无需系统重启，所有的系统服务与其他特性即可启动。  </li>
+<li>由于 Ignition 通过声明式配置将主机调整为指定的状态，因此不能存在具有部分配置的主机，若在部署 OpenShift 4 集群时存在部分配置的主机，该主机将无法加入集群，需更换新的主机再次调配加入集群。  </li>
+<li>若存在问题的 Ignition 配置引起主机配置的失败，Ignition 将不再尝试使用相同的配置来调配另一台主机。  </li>
+<li>由于 Ignition 可使用完整的空磁盘，它能实现 cloud-init 无法完成的任务，如使用 PXE 引导从空磁盘调配裸机系统。</li>
+</ul>
+</li>
+</ul>
+<h3 id="Ignition-对-OpenShift-4-集群主机的处理顺序："><a href="#Ignition-对-OpenShift-4-集群主机的处理顺序：" class="headerlink" title="Ignition 对 OpenShift 4 集群主机的处理顺序："></a>Ignition 对 OpenShift 4 集群主机的处理顺序：</h3><ul>
+<li>在 OpenShift 4 集群中的 RHCOS 主机上 Ignition 的处理涉及以下步骤：  <ul>
+<li>1️⃣ 控制平面主机（<code>control plane machines</code>）从引导主机（<code>bootstrap machine</code>）获取 Ignition 配置文件，而工作主机（<code>worker machines</code>）从控制平面主机获取 Ignition 配置文件。  </li>
+<li>2️⃣ Ignition 在主机上创建磁盘分区、文件系统、目录与链接，它支持 RAID 阵列但不支持 LVM 逻辑卷。  </li>
+<li>3️⃣ Igition 在 initramfs 中挂载 root 持久化文件系统于 <code>/sysroot</code> 目录并在 <code>/sysroot</code> 目录中工作。  </li>
+<li>4️⃣ Ignition 配置所有定义的文件系统并恰当地挂载它们。  </li>
+<li>5️⃣ Ignition 运行 <code>systemd</code> 临时文件以填充在 <code>/var</code> 目录中的所需文件。  </li>
+<li>6️⃣ Ignition 运行其配置文件来配置用户、systemd 单元文件与其他配置文件。  </li>
+<li>7️⃣ Ignition 卸载在 initramfs 中挂载的持久化系统中的所有组件。  </li>
+<li>8️⃣ Ignition 启动新主机的初始化过程，启动系统引导阶段的所有其他的服务。</li>
+</ul>
+</li>
+<li>处理结束后，主机已做好加入集群的准备并且无需重启，与前文所述相同。</li>
+</ul>
+<h3 id="Fedora-CoreOS-的安装环境与工具说明："><a href="#Fedora-CoreOS-的安装环境与工具说明：" class="headerlink" title="Fedora CoreOS 的安装环境与工具说明："></a>Fedora CoreOS 的安装环境与工具说明：</h3><ul>
+<li>FCOS 支持在多种 IaaS 环境下运行。</li>
+<li>Fedora CoreOS live ISO 版本：fedora-coreos-36.20220906.3.2-live.x86_64.iso</li>
+<li>Butane 工具：  <ul>
+<li>linux 版本：<a href="https://github.com/coreos/butane/releases/download/v0.15.0/butane-x86_64-unknown-linux-gnu" target="_blank" rel="noopener">0.15.0</a>  </li>
+<li>该工具来源于 <a href="https://github.com/coreos/butane" target="_blank" rel="noopener">coreos/butane</a> 项目  </li>
+<li><code>Butane</code> 以前称为 Fedora CoreOS 配置转换器（Fedora CoreOS Config Transpiler，<code>FCCT</code>），它可将 Butane 配置文件（Butane Config）或称 FCC 文件转换为 Ignition 配置文件（Ignition Config），该文件为 <code>JSON</code> 格式将被 FCOS 主机在首次引导调配时使用，可用于创建磁盘分区、文件系统、用户、受信任的用户 SSH 公钥、文件与系统单元文件（systemd units）等。  </li>
+<li>✨ 其中 Butane 配置文件为 <code>YAML</code> 格式，关于该文件不同版本的配置规范（configuration specifications）请参考该 <a href="https://github.com/coreos/butane/blob/main/docs/specs.md" target="_blank" rel="noopener">链接</a>。  </li>
+<li>✨ Butane 配置文件使用示例请参考该 <a href="https://github.com/coreos/butane/blob/main/docs/examples.md" target="_blank" rel="noopener">Examples</a>。  </li>
+<li>可在自己指定的节点（非 FCOS 主机）上安装 butane，安装方式包括 butane 容器镜像（<code>quay.io/coreos/butane:release</code>）、rpm 软件包或独立的二进制文件（standalone binary），此处使用以上链接的独立二进制文件进行安装。<img src="quay-coreos-butane-release.png" alt="quay-coreos-butane-release.png">  </li>
+<li>butane 的使用方法可参考该 <a href="https://github.com/coreos/butane/blob/main/docs/getting-started.md" target="_blank" rel="noopener">链接</a>。</li>
+</ul>
+</li>
+<li>ignition-validate 工具：  <ul>
+<li>linux 版本：<a href="https://github.com/coreos/ignition/releases/download/v2.14.0/ignition-validate-x86_64-linux" target="_blank" rel="noopener">2.14.0</a>  </li>
+<li>该工具来源于 <a href="https://github.com/coreos/ignition" target="_blank" rel="noopener">coreos/ignition</a> 项目  </li>
+<li>该工具用于对 Ignition 配置文件的格式与合法性字段的验证，若语法不合规将无法在 FCOS 中使用 <code>coreos-installer</code> 于系统首次引导时安装。</li>
+</ul>
+</li>
+</ul>
+<h3 id="Fedora-CoreOS-的定制化安装与验证："><a href="#Fedora-CoreOS-的定制化安装与验证：" class="headerlink" title="Fedora CoreOS 的定制化安装与验证："></a>Fedora CoreOS 的定制化安装与验证：</h3><ul>
+<li><p>准备 HTTP 服务器、Ignition 配置文件与相关配置文件（非 FCOS 节点）：  </p>
+<blockquote>
+<p>❗ 注意：</p>
+<ol>
+<li><p>本文安装采用基于 KVM 虚拟机模拟裸金属安装环境。</p>
+</li>
+<li><p>关于 <code>butane</code> 工具与 <code>ignition-validate</code> 工具的安装如前文所述。</p>
+</li>
+<li><p>💁‍♂️ 本文使用 FCOS live ISO 的方式引导并使用其中的 coreos-installer 工具调配安装主机，若使用 PXE 方式引导安装请参阅官方文档。</p>
+</li>
+</ol>
+</blockquote>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">$ sudo yum install httpd</span><br><span class="line">$ sudo systemctl <span class="built_in">enable</span> --now httpd.service</span><br><span class="line"><span class="comment"># 安装与启动 httpd 服务并设置为开机自启</span></span><br><span class="line">$ ssh-keygen -N <span class="string">''</span> -t rsa -f ~/.ssh/core_fcos_login</span><br><span class="line"><span class="comment"># 创建用于 SSH 免密登录 FCOS 的公私钥，此处将该 SSH 公钥拷贝至 Butane 配置文件</span></span><br><span class="line"><span class="comment"># 的 ssh_authorized_keys 字段中。</span></span><br><span class="line">$ mkdir ~/fcos &amp;&amp; <span class="built_in">cd</span> ~/fcos</span><br><span class="line">$ vim fcos-customized-config.yml</span><br><span class="line"><span class="comment"># 创建 Butane 配置文件</span></span><br></pre></td></tr></table></figure>
+<p>该配置文件如下所示：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 该配置文件可参看前文 GitHub Butane 的 Examples 或 Fedora CoreOS 官方文档</span></span><br><span class="line"><span class="comment"># 的 Storage 部分进行编辑。</span></span><br><span class="line"><span class="attr">variant:</span> <span class="string">fcos</span></span><br><span class="line"><span class="attr">version:</span> <span class="number">1.1</span><span class="number">.0</span></span><br><span class="line"><span class="comment"># 创建自定义用户、密码、home 家目录与配置 SSH 免密登录的公钥</span></span><br><span class="line"><span class="attr">passwd:</span></span><br><span class="line">  <span class="attr">users:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">core</span></span><br><span class="line">      <span class="attr">ssh_authorized_keys:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="string">ssh-rsa</span> <span class="string">AAAAB3Nz...jnXfG+Uj</span> <span class="string">godev@cloud-ctl.domain12.example.com</span></span><br><span class="line">      <span class="comment"># 由于 FCOS/RHCOS 在安装完成后无法使用密码直接登录，该公钥用于 core 用户的</span></span><br><span class="line">      <span class="comment"># SSH 免密登录。</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">cloud-admin</span></span><br><span class="line">      <span class="attr">password_hash:</span> <span class="string">$y$j9T$j0ODWvNUDSXcEcwpDH141.$dvAEVxBHUWbW/NnPd90qkg0Haq6vgkcKF151jvLDgYA</span></span><br><span class="line">      <span class="comment"># 明文密码 redhat 通过 hash 加密的密文</span></span><br><span class="line">      <span class="comment"># 虽然该用户已配置密码，但无法通过 SSH 远程登录，该密码只允许本地控制台登录。</span></span><br><span class="line">      <span class="attr">home_dir:</span> <span class="string">/opt/cloud-admin</span></span><br><span class="line">      <span class="attr">no_create_home:</span> <span class="literal">false</span></span><br><span class="line">      <span class="attr">groups:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="string">wheel</span></span><br><span class="line">      <span class="attr">shell:</span> <span class="string">/bin/bash</span></span><br><span class="line">      <span class="comment"># 注意：当任何用户 SSH 远程登录失效时，可用该用户本地登录并提权！</span></span><br><span class="line"><span class="attr">storage:</span></span><br><span class="line">  <span class="comment"># 将本地指定目录中的文件内容注入 FCOS 的对应文件中，需使用 butane 工具的</span></span><br><span class="line">  <span class="comment"># --files-dir 选项。</span></span><br><span class="line">  <span class="attr">files:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">path:</span> <span class="string">"/etc/NetworkManager/system-connections/Wired connection 1.nmconnection"</span></span><br><span class="line">      <span class="attr">contents:</span></span><br><span class="line">        <span class="attr">local:</span> <span class="string">./Wired_connection_1.nmconnection</span>      </span><br><span class="line">      <span class="attr">mode:</span> <span class="number">0600</span></span><br><span class="line">      <span class="comment"># FCOS 的网络接口配置</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">path:</span> <span class="string">/etc/hostname</span></span><br><span class="line">      <span class="attr">contents:</span></span><br><span class="line">        <span class="attr">local:</span> <span class="string">./hostname</span></span><br><span class="line">      <span class="attr">mode:</span> <span class="number">0644</span></span><br><span class="line">      <span class="comment"># FCOS 的主机名配置</span></span><br><span class="line">  <span class="comment"># 将 FCOS 的 /dev/vdb 进行分区并挂载至 /var 目录，主要用于容器与镜像的存储。</span></span><br><span class="line">  <span class="comment"># 注意：Ignition 不支持对 FCOS/RHCOS 的 LVM 逻辑卷功能！</span></span><br><span class="line">  <span class="attr">disks:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">device:</span> <span class="string">/dev/vdb</span></span><br><span class="line">      <span class="attr">wipe_table:</span> <span class="literal">true</span></span><br><span class="line">      <span class="attr">partitions:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="attr">number:</span> <span class="number">1</span></span><br><span class="line">          <span class="attr">label:</span> <span class="string">var</span></span><br><span class="line">  <span class="attr">filesystems:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">path:</span> <span class="string">/var</span></span><br><span class="line">      <span class="attr">device:</span> <span class="string">/dev/disk/by-partlabel/var</span></span><br><span class="line">      <span class="attr">format:</span> <span class="string">xfs</span></span><br><span class="line">      <span class="attr">wipe_filesystem:</span> <span class="literal">true</span> </span><br><span class="line">      <span class="attr">label:</span> <span class="string">var</span></span><br><span class="line">      <span class="attr">with_mount_unit:</span> <span class="literal">true</span></span><br></pre></td></tr></table></figure>
+<p>以上 YAML 文件可点击 <a href="https://github.com/Alberthua-Perl/scripts-confs/tree/master/fedora-coreos-36" target="_blank" rel="noopener">此处</a> 获得。 </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">$ cat ./hostname</span><br><span class="line">  fcos36-cloud.lab.example.com</span><br><span class="line">$ cat ./Wired_connection_1.nmconnection </span><br><span class="line">  [connection]</span><br><span class="line">  id=Wired connection 1</span><br><span class="line">  <span class="built_in">type</span>=ethernet</span><br><span class="line">  autoconnect-priority=-999</span><br><span class="line">  interface-name=ens3</span><br><span class="line"></span><br><span class="line">  [ethernet]</span><br><span class="line"></span><br><span class="line">  [ipv4]</span><br><span class="line">  address1=192.168.110.13/24,192.168.110.1</span><br><span class="line">  dns=192.168.110.1;</span><br><span class="line">  method=manual</span><br><span class="line"></span><br><span class="line">$ butane --files-dir . \</span><br><span class="line">  --pretty --strict \</span><br><span class="line">  --output fcos-customized-config.ign fcos-customized-config.yml</span><br><span class="line"><span class="comment"># 在当前目录中根据 Butane 配置文件转换为 Ignition 配置文件</span></span><br><span class="line">$ ignition-validate fcos-customized-config.ign</span><br><span class="line"><span class="comment"># 验证 Ignition 配置文件语法的合法性，若无返回则验证通过，该文件可用于 FCOS 的安装。</span></span><br><span class="line">$ sudo cp fcos-customized-config.ign /var/www/html/</span><br><span class="line"><span class="comment"># 拷贝该文件至 HTTP 服务器的根目录中用于 FCOS 中 coreos-installer 工具的下载</span></span><br><span class="line"><span class="comment"># 读取与系统安装。</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>创建 FCOS 虚拟机并使用 FCOS live ISO 引导安装，如下所示：<img src="use-fedora-coreos-live-to-install.png" alt="use-fedora-coreos-live-to-install.png"><img src="login-fedora-coreos-live.png" alt="login-fedora-coreos-live.png"><br>👉 <code>core</code> 用户可 <code>sudo</code> 免密提权为 root 用户。<br>👉 使用 <code>core</code> 用户正常登录后，再使用 <code>ip -br a s</code> 命令查看主机的 IP 地址（一般可通过 <code>DHCP</code> 自动获取），若无与 HTTP 服务器通信的 IP 地址，将无法下载 Ignition 配置文件而安装失败，可通过如下命令临时配置加以生效：  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ sudo ip address add 192.168.110.13/24 dev ens3</span><br><span class="line"><span class="comment"># 需根据实际场景调整 IP 地址与对应的网络接口</span></span><br></pre></td></tr></table></figure>
+<p>👉 使用 FCOS live ISO 自带的 <code>coreos-installer</code> 工具根据 Ignition 配置文件安装部署，如下所示：<br><img src="coreos-installer-customized-install.png" alt="coreos-installer-customized-install.png">  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">$ sudo coreos-installer install \</span><br><span class="line">  --insecure-ignition \</span><br><span class="line">  --ignition-url http://192.168.110.130/fcos-customized-config.ign \</span><br><span class="line">  /dev/vda</span><br><span class="line"><span class="comment"># 下载 Ignition 配置文件并将根系统安装于 /dev/vda 中</span></span><br><span class="line"><span class="comment"># 此安装过程根据所配置的内容不同耗时也将不同（笔者环境中安装较快）</span></span><br><span class="line">$ sudo reboot</span><br><span class="line"><span class="comment"># 重启系统</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>登录 FCOS 验证安装状态：  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">$ ssh -i ~/.ssh/core_fcos_login core@fcos36-cloud</span><br><span class="line">  Fedora CoreOS 36.20221001.3.0</span><br><span class="line">  Tracker: https://github.com/coreos/fedora-coreos-tracker</span><br><span class="line">  Discuss: https://discussion.fedoraproject.org/tag/coreos</span><br><span class="line"></span><br><span class="line">  Last login: Mon Oct 24 14:07:00 2022 from 192.168.110.130</span><br><span class="line">  [core@fcos36-cloud ~]$ sudo -i</span><br><span class="line">  [root@fcos36-cloud ~]<span class="comment"># id cloud-admin</span></span><br><span class="line">  uid=1001(cloud-admin) gid=1001(cloud-admin) groups=1001(cloud-admin),10(wheel)</span><br><span class="line">  [root@fcos36-cloud ~]<span class="comment"># su - cloud-admin</span></span><br><span class="line">  [cloud-admin@fcos36-cloud ~]$ sudo -i</span><br><span class="line">  [sudo] password <span class="keyword">for</span> cloud-admin: </span><br><span class="line">  [root@fcos36-cloud ~]<span class="comment"># lsblk --paths</span></span><br><span class="line">  NAME        MAJ:MIN RM  SIZE RO TYPE MOUNTPOINTS</span><br><span class="line">  /dev/sr0     11:0    1 1024M  0 rom  </span><br><span class="line">  /dev/vda    252:0    0   10G  0 disk </span><br><span class="line">  |-/dev/vda1 252:1    0    1M  0 part </span><br><span class="line">  |-/dev/vda2 252:2    0  127M  0 part </span><br><span class="line">  |-/dev/vda3 252:3    0  384M  0 part /boot</span><br><span class="line">  `-/dev/vda4 252:4    0  9.5G  0 part /sysroot/ostree/deploy/fedora-coreos/var</span><br><span class="line">                                       /usr</span><br><span class="line">                                       /etc</span><br><span class="line">                                       /</span><br><span class="line">                                       /sysroot</span><br><span class="line">  /dev/vdb    252:16   0   10G  0 disk </span><br><span class="line">  `-/dev/vdb1 252:17   0   10G  0 part /var </span><br><span class="line"><span class="comment"># Ignition 配置文件中的配置在 FCOS 中已生效</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>由于 FCOS 中使用 <code>rpm-ostree</code> 进行软件包的管理，若需安装额外的软件包，可使用如下方式：  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">$ sudo rpm-ostree install \</span><br><span class="line">  podman skopeo buildah cri-o cri-tools vim-enhanced</span><br><span class="line"><span class="comment"># 安装容器与镜像管理工具</span></span><br><span class="line">$ sudo systemctl status crio.service</span><br><span class="line"><span class="comment"># 查看 CRI-O 守护进程状态，可通过 crictl 命令测试管理容器。</span></span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<h3 id="参考链接："><a href="#参考链接：" class="headerlink" title="参考链接："></a>参考链接：</h3><ul>
+<li><a href="https://fedoramagazine.org/introducing-fedora-coreos/" target="_blank" rel="noopener">Introducing Fedora CoreOS</a></li>
+<li><a href="https://fedoramagazine.org/getting-started-with-fedora-coreos/" target="_blank" rel="noopener">Getting started with Fedora CoreOS</a></li>
+<li><a href="https://mp.weixin.qq.com/s/Vf6TvGSi5sNnMjT5QldUQg" target="_blank" rel="noopener">Fedora CoreOS 入门 | Linux 中国</a></li>
+<li>❤ <a href="https://docs.fedoraproject.org/en-US/fedora-coreos/" target="_blank" rel="noopener">Fedora CoreOS Documentation</a></li>
+<li><a href="https://docs.openshift.com/container-platform/4.11/architecture/architecture-rhcos.html" target="_blank" rel="noopener">Red Hat Enterprise Linux CoreOS (RHCOS)</a></li>
+<li>❤ <a href="https://developers.redhat.com/blog/2020/03/12/how-to-customize-fedora-coreos-for-dedicated-workloads-with-ostree#" target="_blank" rel="noopener">How to customize Fedora CoreOS for dedicated workloads with OSTree</a></li>
+</ul>
+
+
+                <hr>
+
+                
+
+                <ul class="pager">
+                    
+                    
+                        <li class="next">
+                            <a href="/2022/11/28/k8s-cluster-resource-basic/" data-toggle="tooltip" data-placement="top" title="☸️ Kubernetes 集群与资源管理基础">Next Post &rarr;</a>
+                        </li>
+                    
+                </ul>
+
+                
+
+                
+
+            </div>
+    <!-- Side Catalog Container -->
+        
+
+    <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5><a href="/tags/">FEATURED TAGS</a></h5>
+                    <div class="tags">
+                       
+                          <a class="tag" href="/tags/#Linux" title="Linux">Linux</a>
+                        
+                          <a class="tag" href="/tags/#OpenShift" title="OpenShift">OpenShift</a>
+                        
+                          <a class="tag" href="/tags/#coreos" title="coreos">coreos</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+                <hr>
+                <h5>FRIENDS</h5>
+                <ul class="list-inline">
+
+                    
+                        <li><a href="https://github.com/Alberthua-Perl" target="_blank">Alberthua</a></li>
+                    
+                        <li><a href="https://github.com/xwanli0923" target="_blank">xwanli0923</a></li>
+                    
+                </ul>
+                
+            </div>
+
+        </div>
+    </div>
+</article>
+
+
+
+
+
+
+
+
+
+    <!-- Footer -->
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://github.com/Alberthua-Perl">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; Alberthua Blog 2022 
+                    <br>
+                    Theme by <a href="http://huangxuan.me">Hux</a> 
+                    <span style="display: inline-block; margin: 0 5px;">
+                        <i class="fa fa-heart"></i>
+                    </span> 
+                    Ported by <a href="http://blog.kaijun.rocks">Kaijun</a> | 
+                    <iframe
+                        style="margin-left: 2px; margin-bottom:-5px;"
+                        frameborder="0" scrolling="0" width="91px" height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=kaijun&repo=hexo-theme-huxblog&type=star&count=true" >
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/js/jquery.min.js"></script>
+
+<!-- Bootstrap Core JavaScript -->
+<script src="/js/bootstrap.min.js"></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/js/hux-blog.min.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- 
+     Because of the native support for backtick-style fenced code blocks 
+     right within the Markdown is landed in Github Pages, 
+     From V1.6, There is no need for Highlight.js, 
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0  
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/    
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("https://alberthua-perl.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("https://cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- Side Catalog -->
+
+
+
+
+
+<!-- Image to hack wechat -->
+<img src="https://alberthua-perl.github.io/img/icon_wechat.png" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work -->
+
+</body>
+
+</html>
