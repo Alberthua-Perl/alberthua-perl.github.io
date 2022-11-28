@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head><meta name="generator" content="Hexo 3.9.0">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="让我们一起探索世界！💪 | Thumbs Up for Cloud Native 🤘">
+    <meta name="keyword" content>
+    <link rel="shortcut icon" href="/img/favicon.ico">
+
+    <title>
+        
+          Kani - Ansible 快速部署与管理 Kubernetes v1.22.1 - Alberthua 的博客 | Alberthua&#39;s Blog
+        
+    </title>
+
+    <link rel="canonical" href="https://alberthua-perl.github.io/2022/11/28/kani-deploy-k8s/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/hux-blog.min.css">
+
+    <!-- Pygments Highlight CSS -->
+    <link rel="stylesheet" href="/css/highlight.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="https://cdn.staticfile.org/font-awesome/4.5.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+
+    <!-- Hux Delete, sad but pending in China
+    <link href='http://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/
+    css'>
+    -->
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- ga & ba script hoook -->
+    <script></script>
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">Alberthua Blog</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+
+                    
+
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/about/">About</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/archives/">Archives</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/tags/">Tags</a>
+                        </li>
+                        
+                    
+                    
+                </ul>
+            </div>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+
+    <!-- Main Content -->
+    
+<!-- Image to hack wechat -->
+<!-- <img src="https://alberthua-perl.github.io/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="{{ site.baseurl }}/{% if page.header-img %}{{ page.header-img }}{% else %}{{ site.header-img }}{% endif %}" width="0" height="0"> -->
+
+<!-- Post Header -->
+<style type="text/css">
+    header.intro-header{
+        background-image: url('kani-ansible-k8s.jpg')
+    }
+</style>
+<header class="intro-header" >
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                          <a class="tag" href="/tags/#云原生" title="云原生">云原生</a>
+                        
+                          <a class="tag" href="/tags/#Kubernetes" title="Kubernetes">Kubernetes</a>
+                        
+                          <a class="tag" href="/tags/#Ansible" title="Ansible">Ansible</a>
+                        
+                    </div>
+                    <h1>Kani - Ansible 快速部署与管理 Kubernetes v1.22.1</h1>
+                    <h2 class="subheading">Use Kani to rapidly deploy Kubernetes cluster</h2>
+                    <span class="meta">
+                        Posted by Alberthua on
+                        2022-11-28
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <h3 id="文档目录："><a href="#文档目录：" class="headerlink" title="文档目录："></a>文档目录：</h3><ul>
+<li>项目目的</li>
+<li>实施环境</li>
+<li>需要更改的参数</li>
+<li>实施过程中遇到的问题与解决方法</li>
+<li>Kani 的使用方法</li>
+<li>参考链接</li>
+</ul>
+<h3 id="项目目的："><a href="#项目目的：" class="headerlink" title="项目目的："></a>项目目的：</h3><ul>
+<li>虽然目前具有大量的 Kubernetes 集群自动化部署解决方案，其中官方的 <code>KubeSpray</code> 即为使用 Ansible 的方式部署，但想尝试自己手动造轮子，因此创建了 Kani 项目。</li>
+<li>Kani 项目的目的在于使用 Ansible 快速部署与管理 Kubernetes 集群及其相关组件。</li>
+<li>当前版本中 Kani 支持：  <ul>
+<li><code>Containerd</code> runtime  </li>
+<li><code>Calico</code> CNI  </li>
+<li><code>Red Hat Quay v3 registry</code></li>
+</ul>
+</li>
+<li>Kani 的可选功能包括部署与管理其他额外的云原生、DevOps 与 GitOps 组件，如下所示：  <ul>
+<li>容器镜像仓库：Red Hat Quay v3 registry  </li>
+<li>代码仓库：GitLab</li>
+</ul>
+</li>
+<li>可点击 <a href="https://github.com/Alberthua-Perl/kani" target="_blank" rel="noopener">此处</a> 获取 Kani 项目 👋</li>
+</ul>
+<h3 id="实施环境："><a href="#实施环境：" class="headerlink" title="实施环境："></a>实施环境：</h3><ul>
+<li>OS 版本：<code>CentOS Linux release 7.9.2009</code> (Core)</li>
+<li>kernel 版本：<code>5.13.12</code><blockquote>
+<p>📌 可使用 <code>elrepo repository</code> 升级 Linux kernel。</p>
+</blockquote>
+</li>
+<li>Ansible 版本：<code>2.9.25</code></li>
+<li>Containerd 版本：<code>1.5.5</code></li>
+<li>Kubernetes 版本：<code>v1.22.1</code></li>
+<li>准备一个节点作为 Ansible 控制节点用于运行 Kani，并安装 <code>ansible</code>、<code>rhel-system-roles</code> RPM 软件包。 </li>
+<li>使用普通用户克隆该项目，笔者环境中使用 <code>godev</code> 用户，该用户与项目目录中的 <code>vars/all.yml</code> 中的 <code>operator_user</code> 为同一用户。<blockquote>
+<p>💥 使用 Kani 时，需注意将您的普通用户与 operator_user 保持一致！</p>
+</blockquote>
+</li>
+</ul>
+<h3 id="🤘-需要更改的参数："><a href="#🤘-需要更改的参数：" class="headerlink" title="🤘 需要更改的参数："></a>🤘 需要更改的参数：</h3><ul>
+<li>根据您的实际环境在以下文件中更改对应的参数：  <ul>
+<li><code>ansible.cfg</code> (Ansible config file):    <ul>
+<li>remote_user：各个 Ansible 受管主机上的登录用户  </li>
+</ul>
+</li>
+<li><code>files/kubeadm-conf.yml</code> (kubeadm config file):    <ul>
+<li>localAPIEndpoint.advertiseAddress：master 节点的 API 端点监听地址    </li>
+<li>localAPIEndpoint.bindPort：master 节点的 API 端点监听端口    </li>
+<li>nodeRegistration.criSocket：master 节点 containerd 的 Unix 套接字文件    </li>
+<li>nodeRegistration.name：master 节点的 FQDN    </li>
+<li>nodeRegistration.taints：为 master 节点添加不可调度的污点    </li>
+<li>mode：kube-proxy 的工作模式    </li>
+<li>imageRepository：指定容器镜像的仓库地址    </li>
+<li>KubernetesVersion：集群的安装版本    </li>
+<li><code>networking.serviceSubnet</code>：集群的 Service Cluster IP 网段    </li>
+<li><code>networking.podSubnet</code>：集群的 Pod IP 网段    </li>
+<li>cgroupDriver：指定控制组驱动类型    </li>
+<li><code>clusterDNS</code>：集群的 CoreDNS 的 Service Cluster IP  </li>
+</ul>
+</li>
+<li><code>inventory-kubecluster</code> (Ansible inventory file):    <ul>
+<li>根据您所在的场景修改短主机名，此处为笔者所在的环境节点信息。  </li>
+</ul>
+</li>
+<li><code>vars/all.yml</code> (variables file):    <blockquote>
+<p>💥 根据您所在的环境修改 <code>!!! NEED TO EDIT !!!</code> 中的参数，其余参数可选择性地修改。    </p>
+<ul>
+<li>gateway：所有 Kubernetes 节点的的默认网关    </li>
+<li>nic：所有 Kubernetes 节点连接默认网关的网卡接口    </li>
+<li>operator_user：Ansible 控制节点与受管主机上远程连接的普通用户<br>👉 operator_user 与 ansible.cfg 中的 remote_user 相同。    </li>
+<li>kube_master_node：master 节点的短主机名<br>💥 该参数与 inventory-kubecluster 中的短主机名相同。</li>
+</ul>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="实施过程中遇到的问题与解决方法："><a href="#实施过程中遇到的问题与解决方法：" class="headerlink" title="实施过程中遇到的问题与解决方法："></a>实施过程中遇到的问题与解决方法：</h3><ul>
+<li>Kubernetes 部署过程中的部分报错，如下所示：<br><code>kubeadm init</code> 初始化 master 节点失败，并且报错 <code>node not found</code>。由于所有的 <code>pause infra images</code> 未标识（tagged）<code>k8s.io/pause:3.5</code>，因此在 master 节点上的 <code>kubelet</code> 不能创建 <code>sandbox</code>。<br><img src="kubeadm-init-master-error-1.jpg" alt="kubeadm-init-master-error-1.jpg"><img src="kubeadm-init-master-error-2.jpg" alt="kubeadm-init-master-error-2.jpg"></li>
+<li>playbook 中的 <code>register</code> 注册变量不能在不同的 play 间引用。<br><img src="register-var-used-between-two-plays-error.jpg" alt="register-var-used-between-two-plays-error.jpg"></li>
+<li>由于使用 <code>containerd</code> 来运行容器，因此 <code>ctr</code>、<code>crictl</code> 与 <code>nerdctl</code> 可被用来获取容器镜像与容器自身的状态。但是，仅仅 <code>crictl</code> 可直接使用 containerd 配置文件 <code>/etc/containerd/config.toml</code>。crictl 可加载配置有 quay registry endpoint、user 与 password 的配置文件。</li>
+<li>若使用自签名的 CA 证书，crictl 不能从 quay 容器镜像仓库拉取镜像，并且总是报错 <code>x509 cert file error</code>：<br><img src="crictl-ssl-ca-request-quay-error.jpg" alt="crictl-ssl-ca-request-quay-error.jpg"></li>
+<li>通过配置在 containerd 配置文件中的 <code>insecure_skip_verify = true</code> 跳过 tls 验证才能拉取镜像。</li>
+</ul>
+<h3 id="🚀-Kani-的使用方法："><a href="#🚀-Kani-的使用方法：" class="headerlink" title="🚀 Kani 的使用方法："></a>🚀 Kani 的使用方法：</h3><ul>
+<li>Kani 项目的目录结构，如下所示：  <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><span class="line">┌─[godev][paas-ctl][~/kani]</span><br><span class="line">└─➞ tree .</span><br><span class="line">.</span><br><span class="line">├── 00-general-prepare-kube.yml</span><br><span class="line">├── 01-containerd-kube-deploy.yml</span><br><span class="line">├── 02-kube-cluster-calio-deploy.yml</span><br><span class="line">├── 03-post-kube-deploy.yml</span><br><span class="line">├── ansible.cfg</span><br><span class="line">├── destroy-kube-cluster.yml</span><br><span class="line">├── files</span><br><span class="line">│   ├── cni</span><br><span class="line">│   │   └── calico-v3.21.yml</span><br><span class="line">│   ├── containerd</span><br><span class="line">│   │   ├── config.toml</span><br><span class="line">│   │   ├── containerd-rootless-setuptool.sh</span><br><span class="line">│   │   ├── containerd-rootless.sh</span><br><span class="line">│   │   ├── cri-containerd-cni-1.5.5-linux-amd64.tar.gz  <span class="comment"># 该文件可从下文百度网盘下载</span></span><br><span class="line">│   │   └── nerdctl</span><br><span class="line">│   ├── kube-utils</span><br><span class="line">│   │   ├── k9s_Linux_x86_64.tar.gz</span><br><span class="line">│   │   ├── kubeadm-conf.yml</span><br><span class="line">│   │   ├── kube-dashboard-admin.yml</span><br><span class="line">│   │   └── kube-dashboard-v2.3.1.yml</span><br><span class="line">│   ├── quay</span><br><span class="line">│   │   └── deploy-quay-registry.sh</span><br><span class="line">│   ├── repos</span><br><span class="line">│   │   ├── docker-ce.repo</span><br><span class="line">│   │   └── kubernetes.repo</span><br><span class="line">│   ├── rpms</span><br><span class="line">│   │   ├── kubeadm-1.22.1-0.x86_64.rpm</span><br><span class="line">│   │   ├── kubectl-1.22.1-0.x86_64.rpm</span><br><span class="line">│   │   ├── kubelet-1.22.1-0.x86_64.rpm</span><br><span class="line">│   │   └── kubernetes-cni-0.8.7-0.x86_64.rpm</span><br><span class="line">│   └── vimrc</span><br><span class="line">├── inventory-kubecluster</span><br><span class="line">├── job-for-terminate-kube.yml</span><br><span class="line">├── kani</span><br><span class="line">├── kube-reverse</span><br><span class="line">├── provision-quay-registry.yml</span><br><span class="line">├── templates</span><br><span class="line">│   └── hosts.j2</span><br><span class="line">├── terminate-kube-cluster.yml</span><br><span class="line">└── vars</span><br><span class="line">    └── all.yml</span><br><span class="line"></span><br><span class="line">9 directories, 32 files</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<blockquote>
+<ol>
+<li>由于 GitHub 对于上传文件的大小限制（100 MiB），<code>files/containerd/cri-containerd-cni-1.5.5-linux-amd64.tar.gz</code> 可从 <a href="https://pan.baidu.com/s/1ytxDjSN0u5Tewy5rcEGWNQ" target="_blank" rel="noopener">百度网盘</a> 下载，下载密码为 apdl。</li>
+<li>💥 由于在 aliyun yum 源中的 kubeadm、kubectl、kubelet 与 kubernetes-cni 的 rpm 软件包可能存在无法获取的情况，因此已将软件包同项目一起上传！</li>
+</ol>
+</blockquote>
+<ul>
+<li>更改所有文件中的参数后，使用如下命令部署集群：  <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">$ <span class="built_in">cd</span> kani</span><br><span class="line">$ chmod +x ./kani</span><br><span class="line">$ ./kani --<span class="built_in">help</span></span><br><span class="line"><span class="comment"># 查看 kani 的使用方法</span></span><br><span class="line">Rapid deploy kubernetes cluster and elements by ansible</span><br><span class="line"></span><br><span class="line">Usage:</span><br><span class="line">  kani [<span class="built_in">command</span>]</span><br><span class="line"></span><br><span class="line">Available Commands:</span><br><span class="line">  deploy-kube     Deploy single master node kubernetes cluster with calico cni</span><br><span class="line">  terminate-kube  Terminate kubernetes master and worker nodes</span><br><span class="line">  destroy-kube    Destroy and prepare to re-install kubernetes cluster</span><br><span class="line">  config-quay     Config and run quay config container</span><br><span class="line">  deploy-quay     Deploy quay registry</span><br><span class="line"></span><br><span class="line">$ ./kani deploy-kube</span><br><span class="line"><span class="comment"># 部署 Kubernetes 集群</span></span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<blockquote>
+<p>🤘 注意：在 kubeadm init 初始化 master 节点后，由于还未将其他 node 节点加入至集群中，此时各个 node 节点上的 <code>kubelet</code> 守护进程启动失败，可能处于 <code>active (auto-restarting)</code> 状态，查看节点 /var/log/messages 中存在大量的 <code>/etc/kubernetes/pki/ca.crt not found</code> 的报错，这是由于 kubeadm join 还未将 node 节点加入集群以及还未同步 master 节点的 CA 证书所致，待 node 节点加入集群中后 kubelet 状态将恢复 <code>active</code> 状态。</p>
+</blockquote>
+<ul>
+<li><p>Kubernetes 集群部署后的 node 与 pod 状态：<br><img src="kubernetes-cluster-status.jpg" alt="kubernetes-cluster-status.jpg"></p>
+<blockquote>
+<p>🤘 注意：Kubernetes 集群中 <code>coredns pod</code> 在 Calico CNI 未完全 ready 时将处于 <code>pending</code> 状态，直至所有 calico pod 处于 Running 状态时也将处于 Running 状态。</p>
+</blockquote>
+</li>
+<li><p>停止 Kubernetes 集群：  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ ./kani terminate-kube</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>破坏与重装 Kubernetes 集群：  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ ./kani destroy-kube</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>（可选操作）部署 <code>Red Hat Quay v3 registry</code> 并与 Kubernetes 集群集成：<br>若需使用 <code>Red Hat Quay v3 registry</code> 作为容器镜像仓库，可使用如下命令：  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">$ ./kani config-quay</span><br><span class="line"><span class="comment"># 第一步：启动 Quay 的的 Web UI 配置界面</span></span><br><span class="line">$ firefox &amp;</span><br><span class="line"><span class="comment"># 第二步：使用 Web UI 配置 Quay</span></span><br><span class="line">$ ./kani deploy-quay</span><br><span class="line"><span class="comment"># 第三步：部署 Quay</span></span><br></pre></td></tr></table></figure>
+<ul>
+<li><p>可通过 <a href="https://github.com/Alberthua-Perl/tech-docs/blob/master/%E5%AE%B9%E5%99%A8%E6%8A%80%E6%9C%AF%E5%8E%9F%E7%90%86%E4%B8%8E%E5%AE%9E%E8%B7%B5/Red%20Hat%20Quay%20v3%20registry%20%E5%8E%9F%E7%90%86%E4%B8%8E%E5%AE%9E%E7%8E%B0.md" target="_blank" rel="noopener">Red Hat Quay v3 registry 原理与实现</a> 文档了解如何通过 Web UI 配置 Quay。</p>
+</li>
+<li><p>配置 Kubernetes 集群连接 Quay 与拉取镜像：    </p>
+<ul>
+<li><p>若在集群规划时需将 Quay 与 Kubernetes 集群连接的话，需在运行 kani 命令前更改好 <code>files/containerd/config.toml</code> 文件，以保证集群部署完成后可与 Quay 对接。<br>其中 <code>username</code> 与 <code>password</code> 为 Quay 中的登录用户名与密码，如下所示：      </p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">[plugins."io.containerd.grpc.v1.cri".registry]</span></span><br><span class="line">      config_path = ""</span><br><span class="line"></span><br><span class="line">      <span class="section">[plugins."io.containerd.grpc.v1.cri".registry.auths]</span></span><br><span class="line"></span><br><span class="line">      <span class="section">[plugins."io.containerd.grpc.v1.cri".registry.configs]</span></span><br><span class="line">        <span class="section">[plugins."io.containerd.grpc.v1.cri".registry.configs."quay-registry.lab.example.com".tls]</span></span><br><span class="line">          insecure_skip_verify = true</span><br><span class="line">          <span class="comment"># 使用自签名 CA 证书也需配置为 true</span></span><br><span class="line">        <span class="section">[plugins."io.containerd.grpc.v1.cri".registry.configs."quay-registry.lab.example.com".auth]</span></span><br><span class="line">          username = "godev"</span><br><span class="line">          password = "redhat321"</span><br><span class="line">          <span class="comment"># Quay 中需配置的用户名与密码         </span></span><br><span class="line"></span><br><span class="line">      <span class="section">[plugins."io.containerd.grpc.v1.cri".registry.headers]</span></span><br><span class="line"></span><br><span class="line">      <span class="section">[plugins."io.containerd.grpc.v1.cri".registry.mirrors]</span></span><br><span class="line">      <span class="comment">### modified by hualf to configure registry mirror</span></span><br><span class="line">        <span class="section">[plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]</span></span><br><span class="line">          endpoint = ["https://bqr1dr1n.mirror.aliyuncs.com"]</span><br><span class="line">        <span class="section">[plugins."io.containerd.grpc.v1.cri".registry.mirrors."k8s.gcr.io"]</span></span><br><span class="line">          endpoint = ["https://registry.aliyuncs.com/k8sxio"]</span><br><span class="line">        <span class="section">[plugins."io.containerd.grpc.v1.cri".registry.mirrors."quay-registry.lab.example.com"]</span></span><br><span class="line">          endpoint = ["https://quay-registry.lab.example.com"]</span><br><span class="line">          <span class="comment"># 内部私有的容器镜像仓库</span></span><br><span class="line">        <span class="comment"># containerd 守护进程可访问的公共与私有容器镜像仓库</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>若在 Kubernetes 集群部署完成后再与 Quay 集成，需更改每个运行 Containerd 节点的配置文件，再重启每个节点上的 containerd 守护进程，才能保证与 Quay 的对接。   </p>
+</li>
+<li>在笔者的环境中，containerd 配置文件中已配置了 <code>godev</code> 用户与相应密码用于连接 Quay 与拉取镜像，因此，在 Quay 中需创建对应的用户。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="参考链接："><a href="#参考链接：" class="headerlink" title="参考链接："></a>参考链接：</h3><ul>
+<li><a href="https://kubernetes.io/zh/docs/setup/production-environment/tools/kubespray/" target="_blank" rel="noopener">Kubernetes Docs - 使用 Kubespray 安装 Kubernetes</a></li>
+<li><a href="https://v1-22.docs.kubernetes.io/docs/setup/production-environment/tools/kubeadm/" target="_blank" rel="noopener">Kubernetes Docs - Bootstrapping clusters with kubeadm</a></li>
+<li><a href="https://projectcalico.docs.tigera.io/getting-started/kubernetes/self-managed-onprem/onpremises" target="_blank" rel="noopener">Install Calico</a></li>
+</ul>
+
+
+                <hr>
+
+                
+
+                <ul class="pager">
+                    
+                        <li class="previous">
+                            <a href="/2022/11/28/k8s-cluster-resource-basic/" data-toggle="tooltip" data-placement="top" title="☸️ Kubernetes 集群与资源管理基础">&larr; Previous Post</a>
+                        </li>
+                    
+                    
+                        <li class="next">
+                            <a href="/2022/11/26/golang-environment-deploy/" data-toggle="tooltip" data-placement="top" title="Go 语言开发环境部署">Next Post &rarr;</a>
+                        </li>
+                    
+                </ul>
+
+                
+
+                
+
+            </div>
+    <!-- Side Catalog Container -->
+        
+
+    <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5><a href="/tags/">FEATURED TAGS</a></h5>
+                    <div class="tags">
+                       
+                          <a class="tag" href="/tags/#云原生" title="云原生">云原生</a>
+                        
+                          <a class="tag" href="/tags/#Kubernetes" title="Kubernetes">Kubernetes</a>
+                        
+                          <a class="tag" href="/tags/#Ansible" title="Ansible">Ansible</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+                <hr>
+                <h5>FRIENDS</h5>
+                <ul class="list-inline">
+
+                    
+                        <li><a href="https://github.com/Alberthua-Perl" target="_blank">Alberthua&#39;s GitHub</a></li>
+                    
+                </ul>
+                
+            </div>
+
+        </div>
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("https://cdn.bootcss.com/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'always',
+          placement: 'right',
+          icon: '#'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+<style>
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
+
+
+
+    <!-- Footer -->
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://github.com/Alberthua-Perl">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; Alberthua Blog 2022 
+                    <br>
+                    Theme by <a href="http://huangxuan.me">Hux</a> 
+                    <span style="display: inline-block; margin: 0 5px;">
+                        <i class="fa fa-heart"></i>
+                    </span> 
+                    Ported by <a href="http://blog.kaijun.rocks">Kaijun</a> | 
+                    <iframe
+                        style="margin-left: 2px; margin-bottom:-5px;"
+                        frameborder="0" scrolling="0" width="91px" height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=kaijun&repo=hexo-theme-huxblog&type=star&count=true" >
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/js/jquery.min.js"></script>
+
+<!-- Bootstrap Core JavaScript -->
+<script src="/js/bootstrap.min.js"></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/js/hux-blog.min.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- 
+     Because of the native support for backtick-style fenced code blocks 
+     right within the Markdown is landed in Github Pages, 
+     From V1.6, There is no need for Highlight.js, 
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0  
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/    
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("https://alberthua-perl.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("https://cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- Side Catalog -->
+
+
+
+
+
+<!-- Image to hack wechat -->
+<img src="https://alberthua-perl.github.io/img/icon_wechat.png" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work -->
+
+</body>
+
+</html>
