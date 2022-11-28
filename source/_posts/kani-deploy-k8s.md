@@ -1,6 +1,6 @@
 ---
 title: Kani - Ansible 快速部署与管理 Kubernetes v1.22.1
-subtitle: Use Kani to rapidly deploy Kubernetes cluster
+subtitle: Use Kani to Rapidly Deploy Kubernetes Cluster
 header-img: kani-ansible-k8s.svg
 date: 2022-11-28 14:01:23
 tags:

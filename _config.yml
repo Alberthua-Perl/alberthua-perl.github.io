@@ -39,8 +39,12 @@ linkedin_username: ""
 
 # Build settings
 exclude: ["node_modules", "package.json", "Gruntfile.js", "less", "README.md", "README.zh.md"]
+# 故障点：
+#   由于 GitHub Page 构建使用的 Jekyll 从 v3.3 版本开始忽略构建目录中的 node_modules 目录，
+#   因此需使用 exclude 参数指定 node_modules 目录，否则构建与部署无报错出现，但访问的页面为大片空白。
 #anchorjs: true                          # if you want to customize anchor. check out line:181 of `post.html`
 anchorjs: false
+# 去除每级标题的锚定符
 
 
 # Disqus settings
@@ -61,7 +65,7 @@ ba_track_id: ""
 #ga_track_id: 'UA-49627206-1'           # Format: UA-xxxxxx-xx
 ga_track_id: ""
 #ga_domain: huangxuan.me
-ga_domain: ""
+ga_domain: "github.io"
 
 
 # Sidebar settings
@@ -73,21 +77,16 @@ sidebar-avatar: img/avatar.jpg         # use absolute URL, seeing it's used in b
 # Featured Tags
 featured-tags: true                     # whether or not using Feature-Tags
 featured-condition-size: 1              # A tag will be featured if the size of it is more than this condition value
-tags:
-  - Linux
-  - 虚拟化网络
-  - Golang
-  - Cloud Native
 
 
 # Friends
 friends: [
     {
-        title: "Alberthua's GitHub",
+        title: "Alberthua",
         href: "https://github.com/Alberthua-Perl"
     },
     {
-        title: "xwanli0923'GitHub",
+        title: "xwanli0923",
         href: "https://github.com/xwanli0923"
     }
 ]

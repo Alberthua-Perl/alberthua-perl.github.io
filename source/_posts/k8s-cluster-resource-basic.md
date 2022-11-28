@@ -1,6 +1,6 @@
 ---
 title: ☸️ Kubernetes 集群与资源管理基础
-subtitle: Kubernetes cluster and resource basic
+subtitle: Kubernetes Cluster and Resource Basic
 header-img: k8s-resource-basic.svg
 date: 2022-11-28 15:40:47
 tags:
