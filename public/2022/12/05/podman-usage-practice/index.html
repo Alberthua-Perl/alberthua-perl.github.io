@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head><meta name="generator" content="Hexo 3.9.0">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="让我们一起探索世界！💪 | Thumbs Up for Cloud Native 🤘">
+    <meta name="keyword" content>
+    <link rel="shortcut icon" href="/img/favicon.ico">
+
+    <title>
+        
+          Podman 容器原理与使用（2） - Alberthua 的博客 | Alberthua&#39;s Blog
+        
+    </title>
+
+    <link rel="canonical" href="https://alberthua-perl.github.io/2022/12/05/podman-usage-practice/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/hux-blog.min.css">
+
+    <!-- Pygments Highlight CSS -->
+    <link rel="stylesheet" href="/css/highlight.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="https://cdn.staticfile.org/font-awesome/4.5.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+
+    <!-- Hux Delete, sad but pending in China
+    <link href='http://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/
+    css'>
+    -->
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- ga & ba script hoook -->
+    <script></script>
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">Alberthua Blog</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+
+                    
+
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/about/">About</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/archives/">Archives</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/tags/">Tags</a>
+                        </li>
+                        
+                    
+                    
+                </ul>
+            </div>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+
+    <!-- Main Content -->
+    
+<!-- Image to hack wechat -->
+<!-- <img src="https://alberthua-perl.github.io/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="{{ site.baseurl }}/{% if page.header-img %}{{ page.header-img }}{% else %}{{ site.header-img }}{% endif %}" width="0" height="0"> -->
+
+<!-- Post Header -->
+<style type="text/css">
+    header.intro-header{
+        background-image: url('podman-bg.webp')
+    }
+</style>
+<header class="intro-header" >
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                          <a class="tag" href="/tags/#云原生" title="云原生">云原生</a>
+                        
+                          <a class="tag" href="/tags/#容器" title="容器">容器</a>
+                        
+                    </div>
+                    <h1>Podman 容器原理与使用（2）</h1>
+                    <h2 class="subheading">Podman Architecture and Usage (2)</h2>
+                    <span class="meta">
+                        Posted by Alberthua on
+                        2022-12-05
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <h3 id="文档说明："><a href="#文档说明：" class="headerlink" title="文档说明："></a>文档说明：</h3><ul>
+<li><a href="https://github.com/Alberthua-Perl/tech-docs/blob/master/%E5%AE%B9%E5%99%A8%E6%8A%80%E6%9C%AF%E5%8E%9F%E7%90%86%E4%B8%8E%E5%AE%9E%E8%B7%B5/Podman%20%E5%AE%B9%E5%99%A8%E5%8E%9F%E7%90%86%E4%B8%8E%E4%BD%BF%E7%94%A8%EF%BC%881%EF%BC%89.md" target="_blank" rel="noopener">上一篇</a> 已说明 Podman 原理与实现，该文档将继续说明 Podman 容器的使用与实践。</li>
+</ul>
+<h3 id="文档目录："><a href="#文档目录：" class="headerlink" title="文档目录："></a>文档目录：</h3><ul>
+<li>podman 单容器使用及通信方式示例</li>
+<li>使用 podman-compose 实现 Gogs 轻量级代码仓库</li>
+<li>podman pod 多容器编排使用示例</li>
+<li>使用 podman kube play 实现 WordPress 的一键部署</li>
+<li>Podman 使用报错示例</li>
+<li>Podman 有待测试功能</li>
+</ul>
+<h3 id="podman-单容器使用及通信方式示例："><a href="#podman-单容器使用及通信方式示例：" class="headerlink" title="podman 单容器使用及通信方式示例："></a>podman 单容器使用及通信方式示例：</h3><ul>
+<li>示例 1：<br>👉 使用 podman 命令登录 <code>Quay</code> 公共容器镜像仓库并推送镜像：<img src="podman-push-quay.jpg" alt="podman-push-quay.jpg">👉 搜索并拉取 Red Hat 容器镜像仓库中的镜像列表：<img src="podman-pull-image.jpg" alt="podman-pull-image.jpg"></li>
+<li>示例 2：<br>🤘 部署并使用云原生轻量级对象存储 <code>MinIO Server</code>：<br><img src="minio-server-cloud-native-object-storage-demo-1.jpg" alt="minio-server-cloud-native-object-storage-demo-1.jpg"><img src="minio-server-cloud-native-object-storage-demo-2.jpg" alt="minio-server-cloud-native-object-storage-demo-2.jpg">以上示例将 podman 与 systemd 集成实现普通用户的 rootless 容器开机自启动。<img src="minio-server-cloud-native-object-storage-demo-3.jpg" alt="minio-server-cloud-native-object-storage-demo-3.jpg">关于 MinIO Server 分布式对象存储的详细内容，请 <a href="https://min.io/" target="_blank" rel="noopener">参考官网</a>。</li>
+<li>示例 3：<br>🤘 请参考该文档 <a href="https://github.com/Alberthua-Perl/scripts-confs/tree/master/deploy-rsyslog-viewer" target="_blank" rel="noopener">部署 loganalyzer 管理集中式日志</a> 以理解多个 rootfull 容器间的通信方式（通过 <code>cni-podman0</code> 网桥与 <code>iptables</code> 互相通信）。</li>
+</ul>
+<h3 id="使用-podman-compose-实现-Gogs-轻量级代码仓库："><a href="#使用-podman-compose-实现-Gogs-轻量级代码仓库：" class="headerlink" title="使用 podman-compose 实现 Gogs 轻量级代码仓库："></a>使用 podman-compose 实现 Gogs 轻量级代码仓库：</h3><ul>
+<li>使用 <code>podman-compose</code> 通过 <code>link</code> 链接至指定的容器建立通信。</li>
+<li><p>如下所示，部署 Gogs 轻量级代码仓库：<code>Gogs + PostgreSQL</code>  </p>
+<ul>
+<li>关于 podman-compose 的安装可参考 <a href="https://github.com/containers/podman-compose" target="_blank" rel="noopener">GitHub 项目</a></li>
+</ul>
+<blockquote>
+<p>🤔 可考虑使用 podman-compose 部署轻量级 <code>Gitea + Drone</code> CI 持续集成平台</p>
+</blockquote>
+<ul>
+<li>关于 Gogs 项目的详细内容可参考 <a href="https://github.com/gogs/gogs" target="_blank" rel="noopener">Gogs GitHub 项目</a>  </li>
+<li>Gogs 代码版本控制仓库使用 Golang 语言开发，可与后端 MySQL、PostgreSQL、SQLite3、TiDB 等集成。  </li>
+<li>此处使用容器化部署 Gogs，并与 PostgreSQL 集成。  </li>
+<li><p>部署用主机上必须先安装 podman 与 podman-compose，并拉取相应容器镜像加速部署过程，如下所示：<img src="podman-image-list.jps.JPG" alt="podman-image-list.jps.JPG"></p>
+<blockquote>
+<p>📌<strong>注意：</strong></p>
+<p>podman-compose 使用创建 <code>pod</code> 将多个容器组建成 pod 的方式进行容器编排，因此必须具有 <code>pause</code> 容器镜像提供 pod 的共享网络命名空间与挂载命名空间。</p>
+</blockquote>
+</li>
+<li><p>使用普通用户部署，过程如下所示：  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">$ mkdir -p gogs-app/gogs-data/&#123;gogs,gogs-logs,postgresql&#125;</span><br><span class="line"><span class="comment"># 创建用于存储 gogs 与 postgresql 数据映射的目录</span></span><br><span class="line">$ sudo chown -R 100999:100999 gogs-app/gogs-data/&#123;gogs,gogs-logs&#125;</span><br><span class="line"><span class="comment"># 更改映射目录的属组，否则容器启动权限报错。</span></span><br><span class="line">$ getenforce</span><br><span class="line">  Enforcing</span><br><span class="line"><span class="comment"># 确认系统处于 enforcing SELinux 状态，需设置目录映射时的标签。</span></span><br><span class="line"><span class="comment"># 也可禁用 SELinux，若禁用 SELinux，以下两步可不执行并且去除 podman-compose 定义文件中的 "Z"。</span></span><br><span class="line">$ sudo semanage port -a -t http_port_t -p tcp 10800</span><br><span class="line">$ sudo semanage port -a -t ssh_port_t -p tcp 10022</span><br><span class="line"><span class="comment"># 添加自定义端口至 SELinux 数据库中，否则由于权限问题无法访问并安装 Gogs。</span></span><br><span class="line">$ vim gogs-app/gogs-postgres-podman-compose.yaml</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>如下所示 <code>gogs-postgres-podman-compose.yaml</code> 文件可参考 <a href="https://github.com/Alberthua-Perl/dockerfile-s2i-demo/blob/master/gogs-postgres-compose/gogs-postgres-podman-compose.yaml" target="_blank" rel="noopener">此处</a>：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">version:</span> <span class="string">"3"</span></span><br><span class="line"><span class="attr">services:</span></span><br><span class="line">  <span class="attr">postgresql:</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">docker.io/library/postgres:14.1-bullseye</span></span><br><span class="line">    <span class="attr">container_name:</span> <span class="string">"gogs-postgresql"</span></span><br><span class="line">    <span class="attr">volumes:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">"./gogs-data/postgresql:/var/lib/postgresql:Z"</span></span><br><span class="line">    <span class="attr">environment:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">"POSTGRES_USER=gogs"</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">"POSTGRES_PASSWORD=redhat"</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">"POSTGRES_DB=gogs"</span></span><br><span class="line">    <span class="attr">ports:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">"5432:5432"</span></span><br><span class="line"></span><br><span class="line">  <span class="attr">gogs:</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">docker.io/gogs/gogs:0.12</span></span><br><span class="line">    <span class="attr">container_name:</span> <span class="string">"gogs"</span></span><br><span class="line">    <span class="attr">volumes:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">"./gogs-data/gogs:/data:Z"</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">"./gogs-data/gogs-logs:/app/gogs/log:Z"</span></span><br><span class="line">    <span class="attr">ports:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">"10022:22"</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">"10800:3000"</span></span><br><span class="line">    <span class="attr">links:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">postgresql</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>编辑完成 yaml 文件后，使用如下命令启动应用：  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">$ podman-compose -f gogs-app/gogs-postgres-podman-compose.yaml --project gogs-app up</span><br><span class="line"><span class="comment"># 启动 Gogs 与 PostgreSQL 容器，并指定项目名称。</span></span><br><span class="line"><span class="comment"># 若不指定项目名称，项目默认为 yaml 文件所在的目录名称。</span></span><br><span class="line"><span class="comment"># 首次启动容器时，所有的启动与运行日志将打印至终端屏幕上，该终端不可关闭，直至关闭所有服务容器后将自动退出。</span></span><br><span class="line">$ podman-compose -f gogs-app/gogs-postgres-podman-compose.yaml --project gogs-app ps</span><br><span class="line">  using podman version: podman version 3.2.3</span><br><span class="line">  podman ps -a --filter label=io.podman.compose.project=gogs-app</span><br><span class="line">  CONTAINER ID  IMAGE                                     COMMAND               CREATED      STATUS          PORTS                                                                   NAMES</span><br><span class="line">  2bed211ffe60  docker.io/library/postgres:14.1-bullseye  postgres              6 hours ago  Up 3 hours ago  0.0.0.0:10022-&gt;22/tcp, 0.0.0.0:10800-&gt;3000/tcp, 0.0.0.0:5432-&gt;5432/tcp  gogs-postgresql</span><br><span class="line">  2c7d0de4b0a0  docker.io/gogs/gogs:0.12                  /bin/s6-svscan /a...  6 hours ago  Up 3 hours ago  0.0.0.0:10022-&gt;22/tcp, 0.0.0.0:10800-&gt;3000/tcp, 0.0.0.0:5432-&gt;5432/tcp  gogs</span><br><span class="line">  0</span><br><span class="line"><span class="comment"># 查看 podman-compose 管理的容器服务</span></span><br><span class="line">$ podman ps</span><br><span class="line">  CONTAINER ID  IMAGE                                     COMMAND               CREATED      STATUS          PORTS                                                                   NAMES</span><br><span class="line">  b6df150a3a49  k8s.gcr.io/pause:3.5                                            6 hours ago  Up 6 hours ago  0.0.0.0:10022-&gt;22/tcp, 0.0.0.0:10800-&gt;3000/tcp, 0.0.0.0:5432-&gt;5432/tcp  c3a10da46f18-infra</span><br><span class="line">  2bed211ffe60  docker.io/library/postgres:14.1-bullseye  postgres              6 hours ago  Up 3 hours ago  0.0.0.0:10022-&gt;22/tcp, 0.0.0.0:10800-&gt;3000/tcp, 0.0.0.0:5432-&gt;5432/tcp  gogs-postgresql</span><br><span class="line">  2c7d0de4b0a0  docker.io/gogs/gogs:0.12                  /bin/s6-svscan /a...  6 hours ago  Up 3 hours ago  0.0.0.0:10022-&gt;22/tcp, 0.0.0.0:10800-&gt;3000/tcp, 0.0.0.0:5432-&gt;5432/tcp  gogs</span><br><span class="line"><span class="comment"># 查看正在运行的容器，包含 infra 容器。</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>所有容器正常运行后，使用 <code>http://&lt;容器宿主机 IP 地址&gt;:10800</code> 访问 Gogs 安装界面，需填入的值参考如下：<img src="gogs-settings.jpg" alt="gogs-settings.jpg">    </p>
+<ul>
+<li>Run User 值：默认 <code>git</code>。</li>
+<li>Domain 值：若要从其他主机连接至 Gogs 仓库，Domian 必须配置为容器宿主机的 IP 地址或主机名。</li>
+<li>SSH Port 值：podman-compose 定义文件中对外暴露的 SSH 端口号。</li>
+<li>HTTP Port 值：默认 <code>3000</code> 端口。  </li>
+</ul>
+</li>
+<li>Web 页面中最后需设置 Gogs 管理员账号以完成安装。  </li>
+<li>安装完成后，使用管理员账号登录或重新注册新账号登录与使用。  </li>
+<li>如下所示，使用 <code>devops</code> 用户创建新代码库并完成 commit 提交：<img src="gogs-git-repository.jpg" alt="gogs-git-repository.jpg">  </li>
+<li><p>如需关闭 Gogs 代码仓库，请使用以下方法停止 gogs 与 postgresql 容器服务即可：    </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">$ podman-compose -f gogs-app/gogs-postgres-podman-compose.yaml --project gogs-app stop gogs postgresql</span><br><span class="line">  using podman version: podman version 3.2.3</span><br><span class="line">  podman stop -t 10 gogs</span><br><span class="line">  gogs</span><br><span class="line">  0</span><br><span class="line">  podman stop -t 10 gogs-postgresql</span><br><span class="line">  gogs-postgresql</span><br><span class="line">  0</span><br><span class="line">$ podman ps</span><br><span class="line">  CONTAINER ID  IMAGE                 COMMAND     CREATED       STATUS             PORTS                                                                   NAMES</span><br><span class="line">  b6df150a3a49  k8s.gcr.io/pause:3.5              30 hours ago  Up 39 minutes ago  0.0.0.0:10022-&gt;22/tcp, 0.0.0.0:10800-&gt;3000/tcp, 0.0.0.0:5432-&gt;5432/tcp  c3a10da46f18-infra</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>💥<strong>注意：</strong></p>
+<p>切不可直接使用 podman-compose 命令的 <code>down</code> 子命令，该子命令将所有相关的容器与 pod 全部删除，pod 删除后无法将其中的各容器映射至宿主机对应的目录中，即使原始数据依然保留于目录中。</p>
+</blockquote>
+</li>
+<li><p>重新启动 Gogs 代码仓库的方式，如下所示： </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">$ podman-compose -f gogs-app/gogs-postgres-podman-compose.yaml --project gogs-app start gogs postgresql</span><br><span class="line">  using podman version: podman version 3.2.3</span><br><span class="line">  podman start gogs</span><br><span class="line">  gogs</span><br><span class="line">  0</span><br><span class="line">  podman start gogs-postgresql</span><br><span class="line">  gogs-postgresql</span><br><span class="line">  0</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="podman-pod-多容器编排使用示例："><a href="#podman-pod-多容器编排使用示例：" class="headerlink" title="podman pod 多容器编排使用示例："></a>podman pod 多容器编排使用示例：</h3><ul>
+<li><code>podman-compose</code> 的使用依赖于 <code>python</code> 版本以及依赖包，若在不同平台中使用可能存在无法安装对应版本的 python 及依赖包的情况，因此 podman-compose 并不能很好的解决单机上的多容器编排问题。</li>
+<li>值得庆幸的是，podman 自带的 <code>podman pod</code> 子命令可原生支持多容器编排，该命令可将多容器运行于同一 pod 中使用相同的 <code>network namespace</code> 以更方便的调配容器。</li>
+<li><p>如下命令所示：<br>👉 从头创建 pod 并附加额外的容器：  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">$ podman pod create --name &lt;pod_name&gt; [-p &lt;host_port&gt;:&lt;pod_port&gt;]</span><br><span class="line"><span class="comment"># 使用 pause 容器镜像从头创建 pod</span></span><br><span class="line"><span class="comment"># 若之后需在 pod 中创建使用端口映射的容器，需要在创建 pod 之初指定端口映射关系，无法在创建容器时指定，由于 pod</span></span><br><span class="line"><span class="comment"># 提供了其中所有容器的共享网络命名空间。</span></span><br><span class="line"><span class="comment"># 注意：若需指定多个端口，可同时使用多个 -p 选项。</span></span><br><span class="line">$ podman run -d --name &lt;container_name&gt; --pod &lt;pod_name&gt; &lt;container_image&gt;:&lt;tag&gt;</span><br><span class="line"><span class="comment"># 创建容器将其附加到 pod 中</span></span><br><span class="line">$ podman pod [ps|list|ls]</span><br><span class="line"><span class="comment"># 查看已存在的 pod</span></span><br><span class="line">$ podman pod [stop|rm] &lt;pod_name&gt;</span><br><span class="line"><span class="comment"># 停止或删除 pod，将一并删除 pod 中的所有容器。</span></span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>📌<strong>注意：</strong></p>
+<ol>
+<li><code>k8s.gcr.io/pause:3.5</code> 镜像拉取需要科学上网。</li>
+<li>若无法拉取，可先拉取 <code>registry.aliyuncs.com/google_containers/pause:3.5</code> 镜像，再更改其 <code>tag</code> 即可。</li>
+</ol>
+</blockquote>
+<p>👉 随创建容器时同时创建 pod：  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">$ podman run -d \</span><br><span class="line">  --name &lt;container_name&gt; --pod new:&lt;pod_name&gt; \</span><br><span class="line">  [-p &lt;host_port&gt;:&lt;pod_port&gt;] \</span><br><span class="line">  &lt;container_image&gt;:&lt;tag&gt;</span><br><span class="line"><span class="comment"># 随创建容器时同时创建 pod</span></span><br><span class="line">$ podman run -d \</span><br><span class="line">  --name &lt;container_name&gt; --pod &lt;pod_name&gt; \</span><br><span class="line">  &lt;container_image&gt;:&lt;tag&gt;</span><br><span class="line"><span class="comment"># 在 pod 中创建新的容器</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>示例 1：<br>如下所示，创建名为 <code>nginx-docs</code> 的容器并同时创建名为 <code>docker-docs</code> 的 pod，也可创建其他容器添加至 pod 中，pod 中的容器共享 <code>network namespace</code>：<img src="podman-run-pod-create.jpg" alt="podman-run-pod-create.jpg"></p>
+</li>
+<li>🤘 示例 2：<br>使用 podman 在单个 pod 中集成多容器的方法，可参考 <a href="https://github.com/Alberthua-Perl/tech-docs/blob/master/Red%20Hat%20Quay%20v3%20registry%E5%8E%9F%E7%90%86%E4%B8%8E%E5%AE%9E%E7%8E%B0.md" target="_blank" rel="noopener">之前发布的文档</a>，该文档中将 Quay、MySQL 与 Redis 的单容器集成在单个 pod 中，使用 pod 的 <code>network namespace</code> 方便 Quay 镜像仓库的管理。</li>
+</ul>
+<h3 id="🚀-使用-podman-kube-play-实现-WordPress-的一键部署："><a href="#🚀-使用-podman-kube-play-实现-WordPress-的一键部署：" class="headerlink" title="🚀 使用 podman kube play 实现 WordPress 的一键部署："></a>🚀 使用 podman kube play 实现 WordPress 的一键部署：</h3><ul>
+<li>除上述 podman pod 容器编排的方式以外，podman 也已支持类似于使用 <code>Kubernetes</code> 结构化 <code>yaml</code> 文件的方式，即可使用 <code>podman kube play</code> 创建 <code>Pod</code>、<code>Deployment</code> 与 <code>PersistentVolumeClaim</code> 等。</li>
+<li><p>可将由 <code>podman pod create</code> 创建的 pod 通过如下命令生成 pod 的资源定义文件：  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ podman generate kube &lt;pod_name&gt; &gt; &lt;application_name&gt;.yml</span><br><span class="line"><span class="comment"># 导出已存在 pod 的资源定义文件</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>该示例中生成的 pod 资源定义文件需稍加改动用于应用的部署，可参考 <a href="https://github.com/Alberthua-Perl/go-kubernetes-learn-path/blob/hotfixes/mywpblog-pod.yml" target="_blank" rel="noopener">该链接</a>：  </p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Pod</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">labels:</span></span><br><span class="line">    <span class="attr">app:</span> <span class="string">mywpblog</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">mywpblog</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">automountServiceAccountToken:</span> <span class="literal">false</span></span><br><span class="line">  <span class="attr">containers:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">args:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">mysqld</span></span><br><span class="line">    <span class="attr">env:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">MYSQL_USER</span></span><br><span class="line">      <span class="attr">value:</span> <span class="string">wp_user</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">MYSQL_ROOT_PASSWORD</span></span><br><span class="line">      <span class="attr">value:</span> <span class="string">redhat</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">MYSQL_PASSWORD</span></span><br><span class="line">      <span class="attr">value:</span> <span class="string">wp_pass</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">MYSQL_DATABASE</span></span><br><span class="line">      <span class="attr">value:</span> <span class="string">wp_blog</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">docker.io/library/mysql:5.7.40-debian</span></span><br><span class="line">    <span class="attr">name:</span> <span class="string">wpdatabase</span></span><br><span class="line">    <span class="attr">ports:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">containerPort:</span> <span class="number">3306</span></span><br><span class="line">      <span class="attr">hostPort:</span> <span class="number">3306</span></span><br><span class="line">    <span class="attr">resources:</span> <span class="string">&#123;&#125;</span></span><br><span class="line">    <span class="attr">securityContext:</span></span><br><span class="line">      <span class="attr">capabilities:</span></span><br><span class="line">        <span class="attr">drop:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="string">CAP_MKNOD</span></span><br><span class="line">        <span class="bullet">-</span> <span class="string">CAP_NET_RAW</span></span><br><span class="line">        <span class="bullet">-</span> <span class="string">CAP_AUDIT_WRITE</span></span><br><span class="line">    <span class="attr">volumeMounts:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">mountPath:</span> <span class="string">/var/lib/mysql</span></span><br><span class="line">      <span class="attr">name:</span> <span class="string">tmp-wpdbfiles-host-0</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">args:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">apache2-foreground</span></span><br><span class="line">    <span class="attr">env:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">WORDPRESS_DB_NAME</span></span><br><span class="line">      <span class="attr">value:</span> <span class="string">wp_blog</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">WORDPRESS_DB_HOST</span></span><br><span class="line">      <span class="attr">value:</span> <span class="string">"0.0.0.0"</span></span><br><span class="line">      <span class="comment"># WORDPRESS_DB_HOST definied as '0.0.0.0' because two containers </span></span><br><span class="line">      <span class="comment"># use same network namespace</span></span><br><span class="line">      <span class="comment"># WORDPRESS_DB_HOST is different from 'podman pod create' and </span></span><br><span class="line">      <span class="comment"># 'podman kube play'.</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">WORDPRESS_DB_USER</span></span><br><span class="line">      <span class="attr">value:</span> <span class="string">wp_user</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">WORDPRESS_DB_PASSWORD</span></span><br><span class="line">      <span class="attr">value:</span> <span class="string">wp_pass</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">docker.io/library/wordpress:6.1.1-php7.4-apache</span></span><br><span class="line">    <span class="attr">name:</span> <span class="string">wpfrontend</span></span><br><span class="line">    <span class="attr">ports:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">containerPort:</span> <span class="number">80</span></span><br><span class="line">        <span class="attr">hostPort:</span> <span class="number">8080</span></span><br><span class="line">    <span class="attr">resources:</span> <span class="string">&#123;&#125;</span></span><br><span class="line">    <span class="attr">securityContext:</span></span><br><span class="line">      <span class="attr">capabilities:</span></span><br><span class="line">        <span class="attr">drop:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="string">CAP_MKNOD</span></span><br><span class="line">        <span class="bullet">-</span> <span class="string">CAP_NET_RAW</span></span><br><span class="line">        <span class="bullet">-</span> <span class="string">CAP_AUDIT_WRITE</span></span><br><span class="line">    <span class="attr">volumeMounts:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">mountPath:</span> <span class="string">/var/www/html</span></span><br><span class="line">      <span class="attr">name:</span> <span class="string">tmp-wpfront-host-0</span></span><br><span class="line">  <span class="attr">enableServiceLinks:</span> <span class="literal">false</span></span><br><span class="line">  <span class="attr">hostname:</span> <span class="string">mywpblog</span></span><br><span class="line">  <span class="attr">restartPolicy:</span> <span class="string">Never</span></span><br><span class="line">  <span class="attr">volumes:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">hostPath:</span></span><br><span class="line">      <span class="attr">path:</span> <span class="string">/tmp/wpdbfiles</span></span><br><span class="line">      <span class="attr">type:</span> <span class="string">Directory</span></span><br><span class="line">    <span class="attr">name:</span> <span class="string">tmp-wpdbfiles-host-0</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">hostPath:</span></span><br><span class="line">      <span class="attr">path:</span> <span class="string">/tmp/wpfront</span></span><br><span class="line">      <span class="attr">type:</span> <span class="string">Directory</span></span><br><span class="line">    <span class="attr">name:</span> <span class="string">tmp-wpfront-host-0</span></span><br><span class="line"><span class="attr">status:</span> <span class="string">&#123;&#125;</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>使用该 <a href="https://github.com/Alberthua-Perl/go-kubernetes-learn-path/blob/hotfixes/wpblog-pod-manage" target="_blank" rel="noopener">脚本</a> 实现 WordPress 应用的一键部署与管理，WordPress 容器与 MySQL 容器运行于同一 pod 中，运行成功后打开浏览器即可访问安装 WordPress 应用，如下所示：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">$ ./wpblog-pod-manage --kube-deploy</span><br><span class="line">---&gt; Start deploy blog pod...</span><br><span class="line">---&gt; Use podman kube play to create and run pod...</span><br><span class="line">Pod:</span><br><span class="line">7e8d6586ed246380fdb9ee00e73361b16938d4f2d5b646041f5036d9b7e4e8ae</span><br><span class="line">Containers:</span><br><span class="line">5132590944a03adcdfc08ba27945c708ae23b19fdce24fbcda9df6c845b5bc4e</span><br><span class="line">cc2e7cb2a3a5423a7f0d93d07590b5826657eeb59d0491c5578dde0a1d10de1e</span><br><span class="line">---&gt; Pod and containers as followings...</span><br><span class="line">POD ID        NAME        STATUS      CREATED         INFRA ID      <span class="comment"># OF CONTAINERS</span></span><br><span class="line">7e8d6586ed24  mywpblog    Running     34 seconds ago  ca2ea53dfcbb  3</span><br><span class="line"></span><br><span class="line">CONTAINER ID  IMAGE                                            COMMAND               CREATED         STATUS            PORTS                                         NAMES</span><br><span class="line">ca2ea53dfcbb  localhost/podman-pause:4.3.0-1666339791                                35 seconds ago  Up 2 seconds ago  0.0.0.0:3306-&gt;3306/tcp, 0.0.0.0:8080-&gt;80/tcp  7e8d6586ed24-infra    </span><br><span class="line">5132590944a0  docker.io/library/mysql:5.7.40-debian            mysqld                19 seconds ago  Up 2 seconds ago  0.0.0.0:3306-&gt;3306/tcp, 0.0.0.0:8080-&gt;80/tcp  mywpblog-wpdatabase   </span><br><span class="line">cc2e7cb2a3a5  docker.io/library/wordpress:6.1.1-php7.4-apache  apache2-foregroun...  4 seconds ago   Up 2 seconds ago  0.0.0.0:3306-&gt;3306/tcp, 0.0.0.0:8080-&gt;80/tcp  mywpblog-wpfrontend   </span><br><span class="line"><span class="comment"># 使用 podman kube play 的方式部署 WordPress 应用</span></span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<h3 id="Podman-报错示例："><a href="#Podman-报错示例：" class="headerlink" title="Podman 报错示例："></a>Podman 报错示例：</h3><ul>
+<li>podman 容器镜像仓库的配置方式：  <ul>
+<li>全局配置：<code>/etc/containers/registries.conf</code></li>
+<li>局部配置：<code>$HOME/.config/containers/registroes.conf</code></li>
+</ul>
+</li>
+<li>若 podman 安装后在以上配置中未唯一指定的容器镜像仓库，那么在拉取容器镜像时，将交互式提示用户选择容器镜像仓库。</li>
+<li><p>Podman 登录容器镜像仓库的方式：  </p>
+<ul>
+<li><p>使用 <code>podman login</code> 子命令登录指定的容器镜像仓库时，Podman 将访问 token 默认存储于 <code>/run/user/&lt;UID&gt;/containers/auth.json</code> 文件中，当 logout 仓库时，该 token 将被移除，并且该文件中可存储多个登录的仓库 token。<img src="podman-login-token.jpg" alt="podman-login-token.jpg">    </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ podman <span class="built_in">logout</span> --all</span><br><span class="line"><span class="comment"># 登出所有的容器镜像仓库，并从 auth.json 文件中移除所有的 token。</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Podman 默认情况下需要与容器镜像仓库使用 <code>TLS</code> 认证，若容器镜像仓库未配置 TLS、使用自签名的 TLS 证书或未知的 CA 签署的证书，需对 login、pull 或 push 子命令添加 <code>--tls-verify=false</code> 选项以完成认证。  </p>
+</li>
+<li>Skopeo 与 Buildah 也可使用 Podman 保存的认证 token，但是无法执行交互式的登录密码输入。</li>
+</ul>
+</li>
+<li><p>示例 1：<br>👉 podman v3.2.3 登录 Harbor v1.8.1 身份认证报错：  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">$ podman login harbor.domain12.example.com:8880</span><br><span class="line">  Username: admin</span><br><span class="line">  Password: redhat</span><br><span class="line">  Error: authenticating creds <span class="keyword">for</span> <span class="string">"harbor.domain12.example.com:8880"</span>: error pinging docker registry </span><br><span class="line">  harbor.domain12.example.com:8880: Get <span class="string">"https://harbor.domain12.example.com:8880/v2/"</span>: </span><br><span class="line">  http: server gave HTTP response to HTTPS client</span><br><span class="line"><span class="comment"># Podman 未做任何配置登录 Harbor 报错，该 Harbor 容器镜像仓库未配置 TLS 加密传输。</span></span><br><span class="line"><span class="comment"># 报错显示 Harbor 响应 HTTP 请求，而 Podman 发送 HTTPS 请求登录。</span></span><br><span class="line"><span class="comment"># 因此，将 Podman 配置为发送 HTTP 请求的客户端。</span></span><br></pre></td></tr></table></figure>
+<p>🤔 解决方式一：  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">$ podman login --tls-verify=<span class="literal">false</span> harbor.domain12.example.com:8880</span><br><span class="line">  Username: admin</span><br><span class="line">  Password: redhat</span><br><span class="line">  Login Succeeded!</span><br><span class="line"><span class="comment"># Podman 未进行任何配置，直接使用 --tls-verify=false 选项即可认证登录。</span></span><br></pre></td></tr></table></figure>
+<p>🤔 解决方式二：  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line">$ mkdir -p ~/.config/containers/ &amp;&amp; <span class="built_in">cd</span> ~/.config/containers/</span><br><span class="line"><span class="comment"># 创建普通用户 rootless 容器的目录</span></span><br><span class="line">$ vim ~/.config/containers/registries.conf</span><br><span class="line">  unqualified-search-registries = [<span class="string">'harbor.domain12.example.com:8880'</span>]</span><br><span class="line"></span><br><span class="line">  [[registry]]</span><br><span class="line">  location = <span class="string">"harbor.domain12.example.com:8880"</span></span><br><span class="line">  insecure = <span class="literal">true</span></span><br><span class="line">  <span class="comment"># If true, unencrypted HTTP as well as TLS connections with untrusted</span></span><br><span class="line">  <span class="comment"># certificates are allowed.</span></span><br><span class="line">  block = <span class="literal">false</span></span><br><span class="line"><span class="comment"># 配置未加密传输的 Harbor 容器镜像仓库的主机名与端口</span></span><br><span class="line"></span><br><span class="line">$ podman login --<span class="built_in">log</span>-level=debug harbor.domain12.example.com:8880</span><br><span class="line">  INFO[0000] podman filtering at <span class="built_in">log</span> level debug</span><br><span class="line">  DEBU[0000] Called login.PersistentPreRunE(podman login --<span class="built_in">log</span>-level=debug harbor.domain12.example.com:8880)</span><br><span class="line">  DEBU[0000] overlay storage already configured with a mount-program</span><br><span class="line">  DEBU[0000] Merged system config <span class="string">"/usr/share/containers/containers.conf"</span></span><br><span class="line">  DEBU[0000] overlay storage already configured with a mount-program</span><br><span class="line">  DEBU[0000] Using conmon: <span class="string">"/usr/bin/conmon"</span></span><br><span class="line">  ...</span><br><span class="line">  DEBU[0000] Using OCI runtime <span class="string">"/usr/bin/runc"</span></span><br><span class="line">  DEBU[0000] Default CNI network name podman is unchangeable</span><br><span class="line">  INFO[0000] Setting parallel job count to 13</span><br><span class="line">  DEBU[0000] Loading registries configuration <span class="string">"/home/kiosk/.config/containers/registries.conf"</span></span><br><span class="line">  DEBU[0000] Loading registries configuration <span class="string">"/etc/containers/registries.conf.d/000-shortnames.conf"</span></span><br><span class="line">  DEBU[0000] Loading registries configuration <span class="string">"/etc/containers/registries.conf.d/001-rhel-shortnames.conf"</span></span><br><span class="line">  DEBU[0000] Loading registries configuration <span class="string">"/etc/containers/registries.conf.d/002-rhel-shortnames-overrides.conf"</span></span><br><span class="line">  DEBU[0000] No credentials <span class="keyword">for</span> harbor.domain12.example.com:8880 found</span><br><span class="line">  Username: admin</span><br><span class="line">  Password: <span class="comment"># 交互式输入登录密码</span></span><br><span class="line">  DEBU[0004] Looking <span class="keyword">for</span> TLS certificates and private keys <span class="keyword">in</span> /etc/docker/certs.d/harbor.domain12.example.com:8880</span><br><span class="line">  DEBU[0004] GET https://harbor.domain12.example.com:8880/v2/</span><br><span class="line">  DEBU[0004] Ping https://harbor.domain12.example.com:8880/v2/ err Get <span class="string">"https://harbor.domain12.example.com:8880/v2/"</span>: http: </span><br><span class="line">  server gave HTTP response to HTTPS client (&amp;url.Error&#123;Op:<span class="string">"Get"</span>, URL:<span class="string">"https://harbor.domain12.example.com:8880/v2/"</span>, </span><br><span class="line">  Err:(*errors.errorString)(0xc000590030)&#125;)</span><br><span class="line">  ...</span><br><span class="line">  DEBU[0004] GET http://harbor.domain12.example.com:8880/service/token?account=admin&amp;service=harbor-registry</span><br><span class="line">  DEBU[0004] GET http://harbor.domain12.example.com:8880/v2/</span><br><span class="line">  DEBU[0004] Stored credentials <span class="keyword">for</span> harbor.domain12.example.com:8880 <span class="keyword">in</span> credential helper containers-auth.json</span><br><span class="line">  Login Succeeded!</span><br><span class="line">  DEBU[0004] Called login.PersistentPostRunE(podman login --<span class="built_in">log</span>-level=debug harbor.domain12.example.com:8880)</span><br><span class="line"><span class="comment"># Podman 默认使用 TLS 加密传输</span></span><br><span class="line"><span class="comment"># 以上配置文件将使 Podman 以 HTTP 方式认证登录 Harbor。</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>示例 2：<br>👉 podman v3.2.3 推送容器镜像至 Harbor v1.8.1 中显示 “不完整”：  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">$ podman push harbor.domain12.example.com:8880/library/apache-rhce8.2-alpine:1.0</span><br><span class="line">  Getting image <span class="built_in">source</span> signatures</span><br><span class="line">  Copying blob 551db21ded82 skipped: already exists</span><br><span class="line">  Copying blob 8213d0880f11 skipped: already exists</span><br><span class="line">  Copying blob e2eb06d8af82 skipped: already exists</span><br><span class="line">  ...</span><br><span class="line">  Copying blob 05e56f8d5aae skipped: already exists</span><br><span class="line">  Copying blob 631e8a8040bb skipped: already exists</span><br><span class="line">  Copying blob dedba5c062fc skipped: already exists</span><br><span class="line">  Copying blob 0e609f35aa06 [--------------------------------------] 0.0b / 0.0b</span><br><span class="line">  Copying config 34f32c2e7a [======================================] 10.0KiB / 10.0KiB</span><br><span class="line">  Writing manifest to image destination</span><br><span class="line">  Storing signatures</span><br></pre></td></tr></table></figure>
+<p>从推送的返回结果显示，具有 2 层容器镜像层似乎未推送成功，但将该镜像从 Harbor 中拉取并重新运行容器后，容器能正常提供服务，因此最后 2 层镜像层实际推送成功。</p>
+</li>
+<li>示例 3：<br>👉 容器镜像无任何运行或退出状态容器占用，但依然无法删除镜像，可尝试使用 <code>--force</code> 选项将其强制删除。<img src="podman-rmi-error-no-container-use.jpg" alt="podman-rmi-error-no-container-use.jpg"></li>
+<li><p>示例 4：<br>👉 由于从 <code>dockerbub</code> 上直接拉取的镜像为 <code>docker image format</code>，无法使用 <code>podman commit</code> 命令提交为新的容器镜像，该命令对于 <code>-m</code> 选项不能对 docker image format 镜像生效，默认只支持 <code>OCI image format</code>，因此使用 -m 选项对容器执行提交时需强制指定 <code>-f docker</code> 才能生效。</p>
+<blockquote>
+<p>📌<strong>注意：</strong></p>
+<p>可使用 <code>skopeo</code> 工具转换 docker image format 与 OCI image format。</p>
+</blockquote>
+<p><img src="podman-commit-warning.jpg" alt="podman-commit-warning.jpg"></p>
+</li>
+<li><p>示例 5：<br>👉 podman 运行 rootfull 或 rootless busybox 容器后，<code>ping</code> 外网报错权限问题无法 ping 通外网，但使用其他工具可与外网通信，通过 <a href="https://www.redhat.com/sysadmin/container-networking-podman" target="_blank" rel="noopener">该文档</a> 中可知，ping 命令对 <code>capability</code> 敏感，容器可能缺少 <code>CAP_NET_RAW</code>capability 无法通过宿主机 ping 通外网。<br>👉 当然，运行容器时指定 <code>--privileged</code> 选项可使容器获得与宿主机 root 用户同样的与宿主机交互的权限能力，但赋予的权限过高，应当压制该权限，更好的选择是对运行容器添加适当的 <code>Linux capabilities</code>。<img src="podman-busybox-capability.jpg" alt="podman-busybox-capability.jpg"></p>
+</li>
+</ul>
+<h3 id="Podman-有待测试功能："><a href="#Podman-有待测试功能：" class="headerlink" title="Podman 有待测试功能："></a>Podman 有待测试功能：</h3><p>Podman 日志驱动目前只支持 <code>k8s-file</code>、<code>journald</code> 与 <code>none</code>，暂时不支持容器日志的 <code>JSON</code> 格式输出，因此不能与日志收集引擎 <code>fluentd</code> 集成，由其实现将日志传输至 ELK 或 EFK 进行集中式的存储与索引。</p>
+
+
+                <hr>
+
+                
+
+                <ul class="pager">
+                    
+                        <li class="previous">
+                            <a href="/2022/12/05/loganalyzer-rsyslog-mysql/" data-toggle="tooltip" data-placement="top" title="部署 loganalyzer 管理集中式日志">&larr; Previous Post</a>
+                        </li>
+                    
+                    
+                        <li class="next">
+                            <a href="/2022/12/05/podman-arch-usage/" data-toggle="tooltip" data-placement="top" title="Podman 容器原理与使用（1）">Next Post &rarr;</a>
+                        </li>
+                    
+                </ul>
+
+                
+
+                
+
+            </div>
+    <!-- Side Catalog Container -->
+        
+
+    <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5><a href="/tags/">FEATURED TAGS</a></h5>
+                    <div class="tags">
+                       
+                          <a class="tag" href="/tags/#云原生" title="云原生">云原生</a>
+                        
+                          <a class="tag" href="/tags/#容器" title="容器">容器</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+                <hr>
+                <h5>FRIENDS</h5>
+                <ul class="list-inline">
+
+                    
+                        <li><a href="https://github.com/Alberthua-Perl" target="_blank">Alberthua</a></li>
+                    
+                        <li><a href="https://github.com/xwanli0923" target="_blank">xwanli0923</a></li>
+                    
+                </ul>
+                
+            </div>
+
+        </div>
+    </div>
+</article>
+
+
+
+
+
+
+
+
+
+    <!-- Footer -->
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://github.com/Alberthua-Perl">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; Alberthua Blog 2022 
+                    <br>
+                    Theme by <a href="http://huangxuan.me">Hux</a> 
+                    <span style="display: inline-block; margin: 0 5px;">
+                        <i class="fa fa-heart"></i>
+                    </span> 
+                    Ported by <a href="http://blog.kaijun.rocks">Kaijun</a> | 
+                    <iframe
+                        style="margin-left: 2px; margin-bottom:-5px;"
+                        frameborder="0" scrolling="0" width="91px" height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=kaijun&repo=hexo-theme-huxblog&type=star&count=true" >
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/js/jquery.min.js"></script>
+
+<!-- Bootstrap Core JavaScript -->
+<script src="/js/bootstrap.min.js"></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/js/hux-blog.min.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- 
+     Because of the native support for backtick-style fenced code blocks 
+     right within the Markdown is landed in Github Pages, 
+     From V1.6, There is no need for Highlight.js, 
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0  
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/    
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("https://alberthua-perl.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("https://cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- Side Catalog -->
+
+
+
+
+
+<!-- Image to hack wechat -->
+<img src="https://alberthua-perl.github.io/img/icon_wechat.png" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work -->
+
+</body>
+
+</html>
