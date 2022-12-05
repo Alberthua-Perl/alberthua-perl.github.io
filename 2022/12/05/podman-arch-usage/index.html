@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head><meta name="generator" content="Hexo 3.9.0">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="让我们一起探索世界！💪 | Thumbs Up for Cloud Native 🤘">
+    <meta name="keyword" content>
+    <link rel="shortcut icon" href="/img/favicon.ico">
+
+    <title>
+        
+          Podman 容器原理与使用（1） - Alberthua 的博客 | Alberthua&#39;s Blog
+        
+    </title>
+
+    <link rel="canonical" href="https://alberthua-perl.github.io/2022/12/05/podman-arch-usage/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/hux-blog.min.css">
+
+    <!-- Pygments Highlight CSS -->
+    <link rel="stylesheet" href="/css/highlight.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="https://cdn.staticfile.org/font-awesome/4.5.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+
+    <!-- Hux Delete, sad but pending in China
+    <link href='http://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/
+    css'>
+    -->
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- ga & ba script hoook -->
+    <script></script>
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">Alberthua Blog</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+
+                    
+
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/about/">About</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/archives/">Archives</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/tags/">Tags</a>
+                        </li>
+                        
+                    
+                    
+                </ul>
+            </div>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+
+    <!-- Main Content -->
+    
+<!-- Image to hack wechat -->
+<!-- <img src="https://alberthua-perl.github.io/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="{{ site.baseurl }}/{% if page.header-img %}{{ page.header-img }}{% else %}{{ site.header-img }}{% endif %}" width="0" height="0"> -->
+
+<!-- Post Header -->
+<style type="text/css">
+    header.intro-header{
+        background-image: url('podman-bg.webp')
+    }
+</style>
+<header class="intro-header" >
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                          <a class="tag" href="/tags/#云原生" title="云原生">云原生</a>
+                        
+                          <a class="tag" href="/tags/#容器" title="容器">容器</a>
+                        
+                    </div>
+                    <h1>Podman 容器原理与使用（1）</h1>
+                    <h2 class="subheading">Podman Architecture and Usage (1)</h2>
+                    <span class="meta">
+                        Posted by Alberthua on
+                        2022-12-05
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <h3 id="文档说明："><a href="#文档说明：" class="headerlink" title="文档说明："></a>文档说明：</h3><ul>
+<li>实验用 OS 版本：  <ul>
+<li>CentOS 7.9、RHEL 8.0、RHEL 8.2、Ubuntu 20.04.3 LTS</li>
+</ul>
+</li>
+<li>实验用 kernel 版本：  <ul>
+<li>3.10.0-1160.41.1.el7.x86_64  </li>
+<li>4.18.0-193.el8.x86_64  </li>
+<li>5.14.0-1.el7.elrepo.x86_64</li>
+</ul>
+</li>
+<li>实验用 Podman 版本：1.6.4、3.2.3、3.3.1</li>
+<li>实验用 podman-compose 版本：0.1.8</li>
+<li>实验用 Docker 版本：20.10.8</li>
+<li>若未做特殊说明，以下示例均于 <code>RHEL 8.2</code>（<code>4.18.0-193.el8.x86_64</code>）上执行，Podman 版本为 <code>3.2.3</code>。</li>
+<li>该文档中未涉及 podman 命令的基础使用方法，可参阅 <a href="https://mp.weixin.qq.com/s/MDi4RB5V60EGl3ii9usD0Q" target="_blank" rel="noopener">该文档</a> 加以熟悉。</li>
+<li>💥 重要提示：Podman 项目正在不断演进与完善中，请以自身使用的版本为准进行测试与使用！</li>
+</ul>
+<h3 id="文档目录："><a href="#文档目录：" class="headerlink" title="文档目录："></a>文档目录：</h3><ul>
+<li>Podman 的特性概述</li>
+<li>Podman 版本兼容性比较</li>
+<li>Podman 的扩展功能</li>
+<li>Podman 在不同 OS 版本中的安装</li>
+<li>Docker 与 Podman 进程管理方式比较</li>
+<li>Podman 的网络实现原理（rootfull 与 rootless）</li>
+<li>Podman 的 macvlan 网络实现</li>
+<li>Podman rootless 容器用户映射实现方式</li>
+<li>参考链接</li>
+</ul>
+<h3 id="Podman-的特性概述："><a href="#Podman-的特性概述：" class="headerlink" title="Podman 的特性概述："></a>Podman 的特性概述：</h3><ul>
+<li>LXC、<code>LXD</code>（Go 语言开发）、<code>systemd-nspawn</code> 均可作为 Linux 容器，但缺少容器跨主机运行与应用打包的能力。</li>
+<li>Docker 与 Podman 可使用容器镜像实现应用打包发布，快速且轻量。</li>
+<li>Docker 与 Podman 都使用 <code>runC</code>（Go 语言开发）作为底层 <code>oci-runtime</code>。</li>
+<li>Docker 与 Podman 都支持 <code>OCI Image Format</code>（Go 语言开发），都能使用 DockerHub 上的容器镜像，而 systemd-nspawn 无法使用它们的镜像。</li>
+<li>👉 Podman 使用 <code>CNI</code>（Go 语言开发）作为 rootfull 容器网络底层，实现比 Docker 网络层略微简单但原理相同。</li>
+<li>相对于 LXD 与 systemd-nspawn，CNI 可以避免编写大量的网络规则。</li>
+<li>🚀 为了实现普通用户 rootless 容器网络，Podman 可以使用 <code>slirp4netns</code> 程序，避免 <code>kernel space</code> 中的大量 <code>veth pair</code> 虚拟接口的出现, 并且性能更好。</li>
+<li>Docker 运行容器必须使用守护进程且使用 root 权限，存在系统安全问题，而 Podman 针对此问题使用以下两个特性加以解决，如下所示：  <ul>
+<li>Podman 支持无守护进程（<code>no-daemon</code>）运行容器。  </li>
+<li>Podman 支持普通用户运行 <code>rootless</code> 容器，即，普通用户直接运行容器无需提权具有 root 权限。</li>
+</ul>
+</li>
+<li>虽然 Docker 与 Podman 的实现原理不同，但对于使用者而言其 CLI 十分相似，可平滑地从 Docker 过渡至 Podman。</li>
+<li>Podman 的目标不是容器的编排，编排可以使用更加专业的 Kubernetes、Open Shift、Rancher 等，使用 Podman 可以更轻量的运行容器且不受 root 权限的安全问题，即便是 root 用户也无法查看其它普通用户空间下的容器，Podman 通过 <code>user namespace</code> 进行隔离。</li>
+<li>👉 Podman 可使用 <code>systemd service</code> 单元文件直接管理容器，实现容器服务随系统启动而启动。</li>
+<li>👉 Podman 里集成了 <code>CRIU</code>，因此 Podman 中的容器可以在单机上热迁移。</li>
+<li>由于 Kubernetes 将从 <code>v1.24.x</code> 版本后放弃使用 <code>dockershim</code> 接口层，容器运行时可选择使用 <code>Containerd</code> 或者 <code>CRI-O</code>，两者虽然均支持 OCI image 规范，但它们不是面向使用者或开发者直接管理容器或镜像的工具，而 Podman 可直接面向使用者或开发者操作容器或镜像。</li>
+<li>Podman 命令的子进程创建 pod 与容器。</li>
+</ul>
+<h3 id="Podman-版本兼容性比较："><a href="#Podman-版本兼容性比较：" class="headerlink" title="Podman 版本兼容性比较："></a>Podman 版本兼容性比较：</h3><ul>
+<li>Podman 版本、kernel 版本与 OS 版本的兼容性将直接影响普通用户使用 rootless 容器。</li>
+<li><p>如下所示，kernel 不支持 rootless 容器：<br><img src="centos79-kernel-not-support-podman-rootless.jpg" alt="centos79-kernel-not-support-podman-rootless.jpg"></p>
+</li>
+<li><p>普通用户 rootless 容器兼容性比较：<br><img src="podman-version-compare.png" alt="podman-version-compare.png"></p>
+<blockquote>
+<p>📌<strong>注意：</strong></p>
+<p>rootless 容器特性取决于 kernel 的版本，不取决于 OS 与 Podman 的版本。</p>
+</blockquote>
+<ul>
+<li>由于 <code>user namespace</code> 特性在 kernel <code>4.9.0</code> 之后出现，因此升级 kernel 即可解决 rootless 问题。</li>
+<li>关于 rootless 特性在 RHEL 8 中的设置，可 <a href="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/building_running_and_managing_containers/assembly_starting-with-containers_building-running-and-managing-containers#proc_setting-up-rootless-containers_assembly_starting-with-containers" target="_blank" rel="noopener">点击此处</a> 参考 Red Hat 的官方配置说明。</li>
+</ul>
+</li>
+</ul>
+<h3 id="Podman-的扩展功能："><a href="#Podman-的扩展功能：" class="headerlink" title="Podman 的扩展功能："></a>Podman 的扩展功能：</h3><ul>
+<li><p><code>cockpit-podman</code> 软件包作为 cockpit 插件可集成于 <code>Web UI</code> 中，实现 Web UI 管理容器。  </p>
+<ul>
+<li><p>cockpit-podman 服务安装与启用：    </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">$ sudo yum install -y cockpit-podman</span><br><span class="line">$ sudo systemctl <span class="built_in">enable</span> --now cockpit.socket</span><br><span class="line">$ sudo systemctl status cockpit.service</span><br><span class="line"><span class="comment"># 安装 cockpit-podman 软件包，并启用 cockpit 服务。</span></span><br><span class="line">$ sudo netstat -tunlp | grep 9090</span><br><span class="line"><span class="comment"># 查看 systemd 监听的 9090 端口是否启用</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>在 Web UI 中可查看并管理 podman 容器与镜像：<br><img src="cockpit-podman-1.jpg" alt="podman-arch-usage/cockpit-podman-1.jpg"><img src="cockpit-podman-2.jpg" alt="cockpit-podman-2.jpg"></p>
+</li>
+</ul>
+</li>
+<li><code>podman-compose</code> 旨在使用更轻量的方式实现<code>单机容器编排</code>，以用于替换 <code>docker-compose</code>，这种方式将不再依赖守护进程与 root 权限，同时可使用 rootless 容器，详细示例见下文。</li>
+<li>podman-compose 使用 <code>Python</code> 开发，因此可直接使用 <code>pip3</code> 安装该组件，或使用 rpm 软件包方式安装。</li>
+<li>由于 podman-compose 依然处于 <code>dev</code> 阶段，仅作为功能测试使用，暂未受到 GA 环境支持。</li>
+</ul>
+<h3 id="Podman-在不同-OS-版本中的安装："><a href="#Podman-在不同-OS-版本中的安装：" class="headerlink" title="Podman 在不同 OS 版本中的安装："></a>Podman 在不同 OS 版本中的安装：</h3><ul>
+<li><p>CentOS 7.x/8.x 或 RHEL 7.x/8.x 中：yum 命令使用 podman <code>rpm</code> 软件包安装  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">$ sudo yum install -y podman-3.2.3-0.11.module_el8.4.0+942+d25aada8.x86_64</span><br><span class="line"><span class="comment"># 安装 podman 最新版本，低版本 podman 存在较多 bug。</span></span><br><span class="line"><span class="comment"># 注意：</span></span><br><span class="line"><span class="comment">#   1. 需配置 CentOS 8 的 yum 软件源以安装最新版的 podman 及其依赖软件包</span></span><br><span class="line"><span class="comment">#   2. yum 安装 podman 时也将安装 containernetworking-plugins 软件包</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>🤘 Ubuntu 20.04.2 LTS 中：apt-get 命令使用 podman <code>deb</code> 软件包安装  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">$ . /etc/os-release</span><br><span class="line"><span class="comment"># 查看当前的系统发行版</span></span><br><span class="line">$ <span class="built_in">echo</span> <span class="string">"deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_<span class="variable">$&#123;VERSION_ID&#125;</span>/ /"</span> | sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list</span><br><span class="line">$ curl -L <span class="string">"https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_<span class="variable">$&#123;VERSION_ID&#125;</span>/Release.key"</span> | sudo apt-key add -</span><br><span class="line"><span class="comment"># 添加 podman 软件源与 apt 公钥</span></span><br><span class="line">$ sudo apt-get update -y</span><br><span class="line">$ sudo apt-get upgrade -y</span><br><span class="line"><span class="comment"># 更新系统软件源并升级系统软件包</span></span><br><span class="line">$ sudo apt-get install -y podman</span><br><span class="line">  Reading package lists... Done</span><br><span class="line">  Building dependency tree       </span><br><span class="line">  Reading state information... Done</span><br><span class="line">  ...</span><br><span class="line">  The following NEW packages will be installed:</span><br><span class="line">    catatonit conmon containernetworking-plugins containers-common criu crun fuse-overlayfs fuse3 libfuse3-3 libnet1 libprotobuf-c1</span><br><span class="line">    podman podman-machine-cni podman-plugins</span><br><span class="line">  ...</span><br><span class="line"><span class="comment"># 安装 podman 与相关的软件包，包括 conmon、containernetworking-plugins、crun 等。</span></span><br></pre></td></tr></table></figure>
+<p>安装参考链接：  </p>
+<ul>
+<li><a href="https://podman.io/getting-started/installation" target="_blank" rel="noopener">Podman Doc - installation</a></li>
+<li><a href="https://www.hostnextra.com/kb/easy-to-install-podman-on-ubuntu-20-04/" target="_blank" rel="noopener">Easy to Install Podman on Ubuntu 20.04</a></li>
+<li><a href="https://software.opensuse.org//download.html?project=devel%3Akubic%3Alibcontainers%3Astable&amp;package=podman" target="_blank" rel="noopener">podman from devel:kubic:libcontainers:stable project</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="🤘-Docker-与-Podman-进程管理方式比较："><a href="#🤘-Docker-与-Podman-进程管理方式比较：" class="headerlink" title="🤘 Docker 与 Podman 进程管理方式比较："></a>🤘 Docker 与 Podman 进程管理方式比较：</h3><ul>
+<li><p>Docker v20.10.8 使用 <code>dockerd</code> 与 <code>containerd</code> 守护进程管理容器与镜像的生命周期，运行状态如下所示： </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line">$ sudo systemctl status docker.service</span><br><span class="line">● docker.service - Docker Application Container Engine</span><br><span class="line">   Loaded: loaded (/usr/lib/systemd/system/docker.service; enabled; vendor preset: disabled)</span><br><span class="line">   Active: active (running) since Wed 2022-10-19 10:53:04 CST; 6min ago</span><br><span class="line">     Docs: https://docs.docker.com</span><br><span class="line"> Main PID: 79556 (dockerd)</span><br><span class="line">    Tasks: 21</span><br><span class="line">   Memory: 42.6M</span><br><span class="line">   CGroup: /system.slice/docker.service</span><br><span class="line">           ├─79556 /usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock</span><br><span class="line">           ├─79677 /usr/bin/docker-proxy -proto tcp -host-ip 0.0.0.0 -host-port 4000 -container-ip 172.17.0.2 -container-port 4000</span><br><span class="line">           └─79683 /usr/bin/docker-proxy -proto tcp -host-ip :: -host-port 4000 -container-ip 172.17.0.2 -container-port 4000</span><br><span class="line"></span><br><span class="line">Oct 19 10:53:04 cloud-ctl.domain12.example.com dockerd[79556]: time=<span class="string">"2022-10-19T10:53:04.197803867+08:00"</span> level=info msg=<span class="string">"scheme \"unix\" not registered, fallback to default scheme"</span> module=grpc</span><br><span class="line">Oct 19 10:53:04 cloud-ctl.domain12.example.com dockerd[79556]: time=<span class="string">"2022-10-19T10:53:04.197837924+08:00"</span> level=info msg=<span class="string">"ccResolverWrapper: sending update to cc: &#123;[&#123;unix:///run/containerd/containerd.sock  &lt;nil&gt; 0 &lt;nil&gt;&#125;] &lt;nil&gt; &lt;nil&gt;&#125;"</span> module=grpc</span><br><span class="line">Oct 19 10:53:04 cloud-ctl.domain12.example.com dockerd[79556]: time=<span class="string">"2022-10-19T10:53:04.197860326+08:00"</span> level=info msg=<span class="string">"ClientConn switching balancer to \"pick_first\""</span> module=grpc</span><br><span class="line">Oct 19 10:53:04 cloud-ctl.domain12.example.com dockerd[79556]: time=<span class="string">"2022-10-19T10:53:04.220416627+08:00"</span> level=info msg=<span class="string">"Loading containers: start."</span></span><br><span class="line">Oct 19 10:53:04 cloud-ctl.domain12.example.com dockerd[79556]: time=<span class="string">"2022-10-19T10:53:04.347884960+08:00"</span> level=info msg=<span class="string">"Default bridge (docker0) is assigned with an IP address 172.17.0.0/16. Daemon option --bip can be used to set a preferred IP address"</span></span><br><span class="line">Oct 19 10:53:04 cloud-ctl.domain12.example.com dockerd[79556]: time=<span class="string">"2022-10-19T10:53:04.725361851+08:00"</span> level=info msg=<span class="string">"Loading containers: done."</span></span><br><span class="line">Oct 19 10:53:04 cloud-ctl.domain12.example.com dockerd[79556]: time=<span class="string">"2022-10-19T10:53:04.755449128+08:00"</span> level=info msg=<span class="string">"Docker daemon"</span> commit=75249d8 graphdriver(s)=overlay2 version=20.10.8</span><br><span class="line">Oct 19 10:53:04 cloud-ctl.domain12.example.com dockerd[79556]: time=<span class="string">"2022-10-19T10:53:04.755527994+08:00"</span> level=info msg=<span class="string">"Daemon has completed initialization"</span></span><br><span class="line">Oct 19 10:53:04 cloud-ctl.domain12.example.com systemd[1]: Started Docker Application Container Engine.</span><br><span class="line">Oct 19 10:53:04 cloud-ctl.domain12.example.com dockerd[79556]: time=<span class="string">"2022-10-19T10:53:04.776865058+08:00"</span> level=info msg=<span class="string">"API listen on /var/run/docker.sock"</span></span><br><span class="line"><span class="comment"># dockerd 守护进程的运行状态</span></span><br><span class="line"></span><br><span class="line">$ sudo systemctl status containerd</span><br><span class="line">● containerd.service - containerd container runtime</span><br><span class="line">   Loaded: loaded (/usr/lib/systemd/system/containerd.service; enabled; vendor preset: disabled)</span><br><span class="line">   Active: active (running) since Tue 2022-10-18 15:08:06 CST; 20h ago</span><br><span class="line">     Docs: https://containerd.io</span><br><span class="line"> Main PID: 1892 (containerd)</span><br><span class="line">    Tasks: 20</span><br><span class="line">   Memory: 103.4M</span><br><span class="line">   CGroup: /system.slice/containerd.service</span><br><span class="line">           ├─ 1892 /usr/bin/containerd</span><br><span class="line">           └─79696 /usr/bin/containerd-shim-runc-v2 -namespace moby -id 3ea752c1cce6a65b39af7f68c971186e020992514b663ab7a917f47da70450fa -address /run/containerd/containerd.sock</span><br><span class="line"><span class="comment"># containerd 通过调用 containerd-shim-runc-v2 运行指定容器</span></span><br><span class="line">$ sudo ps -ef | grep -E <span class="string">"dockerd|containerd|containerd-shim-runc-v2"</span></span><br><span class="line">  root       1892      1  0 Oct18 ?        00:05:01 /usr/bin/containerd</span><br><span class="line">  root      79556      1  0 10:53 ?        00:00:03 /usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock</span><br><span class="line">  root      79696      1  0 10:53 ?        00:00:01 /usr/bin/containerd-shim-runc-v2 -namespace moby -id 3ea752c1cce6a65b39af7f68c971186e020992514b663ab7a917f47da70450fa -address /run/containerd/containerd.sock</span><br><span class="line"><span class="comment"># PID 79696 为实际的容器运行进程</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Podman 不使用守护进程的方式运行或管理容器，对于 rootfull 容器或 rootless 容器的运行方式存在差异：  </p>
+<ul>
+<li><p>rootfull 容器的进程：<br>👉 以交互式方式运行的容器进程状态如下所示：    </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">$ sudo ps -ef | egrep <span class="string">"podman|slirp4netns|conmon"</span></span><br><span class="line">  root        3879    3476  1 06:31 pts/3    00:00:00 podman run -it --name=mydebian docker.io/library/debian:latest /bin/sh</span><br><span class="line">  root        3945       1  0 06:31 ?        00:00:00 /usr/bin/conmon --api-version 1 -c 29260258303cef76f1191c8b83f16eb7ba70c5424bb17a729e2d3b051680adba -u 29260258303cef76f1191c8b83f16eb7ba70c5424bb17a729e2d3b051680adba -r /usr/bin/crun -b /var/lib/containers/storage/overlay-containers/29260258303cef76f1191c8b83f16eb7ba70c5424bb17a729e2d3b051680adba/userdata -p /run/containers/storage/overlay-containers/29260258303cef76f1191c8b83f16eb7ba70c5424bb17a729e2d3b051680adba/userdata/pidfile -n mydebian --<span class="built_in">exit</span>-dir /run/libpod/exits --full-attach -s -l journald --<span class="built_in">log</span>-level warning --runtime-arg --<span class="built_in">log</span>-format=json --runtime-arg --<span class="built_in">log</span> --runtime-arg=/run/containers/storage/overlay-containers/29260258303cef76f1191c8b83f16eb7ba70c5424bb17a729e2d3b051680adba/userdata/oci-log -t --conmon-pidfile /run/containers/storage/overlay-containers/29260258303cef76f1191c8b83f16eb7ba70c5424bb17a729e2d3b051680adba/userdata/conmon.pid --<span class="built_in">exit</span>-command /usr/bin/podman --<span class="built_in">exit</span>-command-arg --root --<span class="built_in">exit</span>-command-arg /var/lib/containers/storage --<span class="built_in">exit</span>-command-arg --runroot --<span class="built_in">exit</span>-command-arg /run/containers/storage --<span class="built_in">exit</span>-command-arg --<span class="built_in">log</span>-level --<span class="built_in">exit</span>-command-arg warning --<span class="built_in">exit</span>-command-arg --cgroup-manager --<span class="built_in">exit</span>-command-arg systemd --<span class="built_in">exit</span>-command-arg --tmpdir --<span class="built_in">exit</span>-command-arg /run/libpod --<span class="built_in">exit</span>-command-arg --network-config-dir --<span class="built_in">exit</span>-command-arg  --<span class="built_in">exit</span>-command-arg --network-backend --<span class="built_in">exit</span>-command-arg cni --<span class="built_in">exit</span>-command-arg --volumepath --<span class="built_in">exit</span>-command-arg /var/lib/containers/storage/volumes --<span class="built_in">exit</span>-command-arg --runtime --<span class="built_in">exit</span>-command-arg crun --<span class="built_in">exit</span>-command-arg --storage-driver --<span class="built_in">exit</span>-command-arg overlay --<span class="built_in">exit</span>-command-arg --storage-opt --<span class="built_in">exit</span>-command-arg overlay.mountopt=nodev,metacopy=on --<span class="built_in">exit</span>-command-arg --events-backend --<span class="built_in">exit</span>-command-arg journald --<span class="built_in">exit</span>-command-arg container --<span class="built_in">exit</span>-command-arg cleanup --<span class="built_in">exit</span>-command-arg 29260258303cef76f1191c8b83f16eb7ba70c5424bb17a729e2d3b051680adba</span><br><span class="line"><span class="comment"># 由于具有交互式命令行运行依然保留 podman 进程</span></span><br></pre></td></tr></table></figure>
+<p>👉 以 <code>detach</code> 方式（后台）运行的容器进程状态如下所示：    </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">$ sudo ps -ef | egrep <span class="string">"podman|slirp4netns|conmon"</span></span><br><span class="line">  root        3744       1  0 06:25 ?        00:00:00 /usr/bin/conmon --api-version 1 -c b8ad3fce848ef26197a1d8bd43be5a2a72c66211e05cd90ccfaa55e1515ed272 -u b8ad3fce848ef26197a1d8bd43be5a2a72c66211e05cd90ccfaa55e1515ed272 -r /usr/bin/crun -b /var/lib/containers/storage/overlay-containers/b8ad3fce848ef26197a1d8bd43be5a2a72c66211e05cd90ccfaa55e1515ed272/userdata -p /run/containers/storage/overlay-containers/b8ad3fce848ef26197a1d8bd43be5a2a72c66211e05cd90ccfaa55e1515ed272/userdata/pidfile -n apache-rhce8.2-alpine --<span class="built_in">exit</span>-dir /run/libpod/exits --full-attach -s -l journald --<span class="built_in">log</span>-level warning --runtime-arg --<span class="built_in">log</span>-format=json --runtime-arg --<span class="built_in">log</span> --runtime-arg=/run/containers/storage/overlay-containers/b8ad3fce848ef26197a1d8bd43be5a2a72c66211e05cd90ccfaa55e1515ed272/userdata/oci-log --conmon-pidfile /run/containers/storage/overlay-containers/b8ad3fce848ef26197a1d8bd43be5a2a72c66211e05cd90ccfaa55e1515ed272/userdata/conmon.pid --<span class="built_in">exit</span>-command /usr/bin/podman --<span class="built_in">exit</span>-command-arg --root --<span class="built_in">exit</span>-command-arg /var/lib/containers/storage --<span class="built_in">exit</span>-command-arg --runroot --<span class="built_in">exit</span>-command-arg /run/containers/storage --<span class="built_in">exit</span>-command-arg --<span class="built_in">log</span>-level --<span class="built_in">exit</span>-command-arg warning --<span class="built_in">exit</span>-command-arg --cgroup-manager --<span class="built_in">exit</span>-command-arg systemd --<span class="built_in">exit</span>-command-arg --tmpdir --<span class="built_in">exit</span>-command-arg /run/libpod --<span class="built_in">exit</span>-command-arg --network-config-dir --<span class="built_in">exit</span>-command-arg  --<span class="built_in">exit</span>-command-arg --network-backend --<span class="built_in">exit</span>-command-arg cni --<span class="built_in">exit</span>-command-arg --volumepath --<span class="built_in">exit</span>-command-arg /var/lib/containers/storage/volumes --<span class="built_in">exit</span>-command-arg --runtime --<span class="built_in">exit</span>-command-arg crun --<span class="built_in">exit</span>-command-arg --storage-driver --<span class="built_in">exit</span>-command-arg overlay --<span class="built_in">exit</span>-command-arg --storage-opt --<span class="built_in">exit</span>-command-arg overlay.mountopt=nodev,metacopy=on --<span class="built_in">exit</span>-command-arg --events-backend --<span class="built_in">exit</span>-command-arg journald --<span class="built_in">exit</span>-command-arg container --<span class="built_in">exit</span>-command-arg cleanup --<span class="built_in">exit</span>-command-arg b8ad3fce848ef26197a1d8bd43be5a2a72c66211e05cd90ccfaa55e1515ed272</span><br><span class="line"><span class="comment"># podman 在调用 conmon 程序创建并运行容器后退出，而 rootfull 容器的 CNI 插件</span></span><br><span class="line"><span class="comment"># 可直接使用 iptables 的方式实现。</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>rootless 容器的进程：<br>👉 以交互式方式运行的容器进程状态如下所示：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">$ ps -ef | egrep <span class="string">"podman|slirp4netns|conmon"</span></span><br><span class="line">  core        3418    2762  0 06:17 pts/2    00:00:05 podman run -it --name=mybusybox docker.io/library/busybox:latest /bin/sh</span><br><span class="line">  core        3430    3418  0 06:17 pts/2    00:00:00 /usr/bin/slirp4netns --<span class="built_in">disable</span>-host-loopback --mtu=65520 --<span class="built_in">enable</span>-sandbox --<span class="built_in">enable</span>-seccomp --<span class="built_in">enable</span>-ipv6 -c -e 3 -r 4 --netns-type=path /run/user/1000/netns/netns-19eb5630-c0a8-4ea9-8790-76ecdcdf2dbc tap0</span><br><span class="line">  core        3433       1  0 06:17 ?        00:00:00 /usr/bin/conmon --api-version 1 -c 5acc7fc4127d5492866b966d6c0c04dce880995c49eddb8421c11e7efc661160 -u 5acc7fc4127d5492866b966d6c0c04dce880995c49eddb8421c11e7efc661160 -r /usr/bin/crun -b /var/home/core/.<span class="built_in">local</span>/share/containers/storage/overlay-containers/5acc7fc4127d5492866b966d6c0c04dce880995c49eddb8421c11e7efc661160/userdata -p /run/user/1000/containers/overlay-containers/5acc7fc4127d5492866b966d6c0c04dce880995c49eddb8421c11e7efc661160/userdata/pidfile -n mybusybox --<span class="built_in">exit</span>-dir /run/user/1000/libpod/tmp/exits --full-attach -s -l journald --<span class="built_in">log</span>-level warning --runtime-arg --<span class="built_in">log</span>-format=json --runtime-arg --<span class="built_in">log</span> --runtime-arg=/run/user/1000/containers/overlay-containers/5acc7fc4127d5492866b966d6c0c04dce880995c49eddb8421c11e7efc661160/userdata/oci-log -t --conmon-pidfile /run/user/1000/containers/overlay-containers/5acc7fc4127d5492866b966d6c0c04dce880995c49eddb8421c11e7efc661160/userdata/conmon.pid --<span class="built_in">exit</span>-command /usr/bin/podman --<span class="built_in">exit</span>-command-arg --root --<span class="built_in">exit</span>-command-arg /var/home/core/.<span class="built_in">local</span>/share/containers/storage --<span class="built_in">exit</span>-command-arg --runroot --<span class="built_in">exit</span>-command-arg /run/user/1000/containers --<span class="built_in">exit</span>-command-arg --<span class="built_in">log</span>-level --<span class="built_in">exit</span>-command-arg warning --<span class="built_in">exit</span>-command-arg --cgroup-manager --<span class="built_in">exit</span>-command-arg systemd --<span class="built_in">exit</span>-command-arg --tmpdir --<span class="built_in">exit</span>-command-arg /run/user/1000/libpod/tmp --<span class="built_in">exit</span>-command-arg --network-config-dir --<span class="built_in">exit</span>-command-arg  --<span class="built_in">exit</span>-command-arg --network-backend --<span class="built_in">exit</span>-command-arg netavark --<span class="built_in">exit</span>-command-arg --volumepath --<span class="built_in">exit</span>-command-arg /var/home/core/.<span class="built_in">local</span>/share/containers/storage/volumes --<span class="built_in">exit</span>-command-arg --runtime --<span class="built_in">exit</span>-command-arg crun --<span class="built_in">exit</span>-command-arg --storage-driver --<span class="built_in">exit</span>-command-arg overlay --<span class="built_in">exit</span>-command-arg --events-backend --<span class="built_in">exit</span>-command-arg journald --<span class="built_in">exit</span>-command-arg container --<span class="built_in">exit</span>-command-arg cleanup --<span class="built_in">exit</span>-command-arg 5acc7fc4127d5492866b966d6c0c04dce880995c49eddb8421c11e7efc661160</span><br><span class="line"><span class="comment"># 由于具有交互式命令行运行依然保留 podman 进程，并且由 podman 进程创建 slirp4netns 子进程</span></span><br><span class="line"><span class="comment"># 用于 rootless 容器的网络命名空间之间的通信。</span></span><br><span class="line">``` </span><br><span class="line">👉 以 `detach` 方式（后台）运行的容器进程状态如下所示：   </span><br><span class="line">```bash</span><br><span class="line">$ ps -ef | egrep <span class="string">"podman|slirp4netns|conmon"</span></span><br><span class="line">  core        3308       1  0 06:15 pts/2    00:00:00 /usr/bin/slirp4netns --<span class="built_in">disable</span>-host-loopback --mtu=65520 --<span class="built_in">enable</span>-sandbox --<span class="built_in">enable</span>-seccomp --<span class="built_in">enable</span>-ipv6 -c -e 3 -r 4 --netns-type=path /run/user/1000/netns/netns-f9f6f9dd-bf80-f6ca-6f39-7c9d9cd6beea tap0</span><br><span class="line">  core        3325       1  0 06:15 ?        00:00:00 /usr/bin/conmon --api-version 1 -c 91b49d5726023b9ca1c4e30a6665fc21c9b3c3182a1accddb0adb259d0ba20ab -u 91b49d5726023b9ca1c4e30a6665fc21c9b3c3182a1accddb0adb259d0ba20ab -r /usr/bin/crun -b /var/home/core/.<span class="built_in">local</span>/share/containers/storage/overlay-containers/91b49d5726023b9ca1c4e30a6665fc21c9b3c3182a1accddb0adb259d0ba20ab/userdata -p /run/user/1000/containers/overlay-containers/91b49d5726023b9ca1c4e30a6665fc21c9b3c3182a1accddb0adb259d0ba20ab/userdata/pidfile -n apache-rhce8.2-alpine --<span class="built_in">exit</span>-dir /run/user/1000/libpod/tmp/exits --full-attach -s -l journald --<span class="built_in">log</span>-level warning --runtime-arg --<span class="built_in">log</span>-format=json --runtime-arg --<span class="built_in">log</span> --runtime-arg=/run/user/1000/containers/overlay-containers/91b49d5726023b9ca1c4e30a6665fc21c9b3c3182a1accddb0adb259d0ba20ab/userdata/oci-log --conmon-pidfile /run/user/1000/containers/overlay-containers/91b49d5726023b9ca1c4e30a6665fc21c9b3c3182a1accddb0adb259d0ba20ab/userdata/conmon.pid --<span class="built_in">exit</span>-command /usr/bin/podman --<span class="built_in">exit</span>-command-arg --root --<span class="built_in">exit</span>-command-arg /var/home/core/.<span class="built_in">local</span>/share/containers/storage --<span class="built_in">exit</span>-command-arg --runroot --<span class="built_in">exit</span>-command-arg /run/user/1000/containers --<span class="built_in">exit</span>-command-arg --<span class="built_in">log</span>-level --<span class="built_in">exit</span>-command-arg warning --<span class="built_in">exit</span>-command-arg --cgroup-manager --<span class="built_in">exit</span>-command-arg systemd --<span class="built_in">exit</span>-command-arg --tmpdir --<span class="built_in">exit</span>-command-arg /run/user/1000/libpod/tmp --<span class="built_in">exit</span>-command-arg --network-config-dir --<span class="built_in">exit</span>-command-arg  --<span class="built_in">exit</span>-command-arg --network-backend --<span class="built_in">exit</span>-command-arg netavark --<span class="built_in">exit</span>-command-arg --volumepath --<span class="built_in">exit</span>-command-arg /var/home/core/.<span class="built_in">local</span>/share/containers/storage/volumes --<span class="built_in">exit</span>-command-arg --runtime --<span class="built_in">exit</span>-command-arg crun --<span class="built_in">exit</span>-command-arg --storage-driver --<span class="built_in">exit</span>-command-arg overlay --<span class="built_in">exit</span>-command-arg --events-backend --<span class="built_in">exit</span>-command-arg journald --<span class="built_in">exit</span>-command-arg container --<span class="built_in">exit</span>-command-arg cleanup --<span class="built_in">exit</span>-command-arg 91b49d5726023b9ca1c4e30a6665fc21c9b3c3182a1accddb0adb259d0ba20ab</span><br><span class="line"><span class="comment"># podman 在调用 conmon 程序创建并运行容器后退出，并且由 podman 进程创建 slirp4netns 子进程</span></span><br><span class="line"><span class="comment"># 用于 rootless 容器的网络命名空间之间的通信。</span></span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="Podman-的网络实现原理（rootfull-与-rootless）："><a href="#Podman-的网络实现原理（rootfull-与-rootless）：" class="headerlink" title="Podman 的网络实现原理（rootfull 与 rootless）："></a>Podman 的网络实现原理（rootfull 与 rootless）：</h3><ul>
+<li>Podman 支持的容器网络模式如下所示：<br><img src="podman-network-mode.jpg" alt="podman-network-mode.jpg"></li>
+<li><p>root 用户运行 rootfull 容器网络分析：  </p>
+<ul>
+<li>默认情况下，rootfull 容器使用 bridge 网络模式，并且在未创建任何容器前系统上不会自动创建 <code>cni-podman0</code>网桥，只有创建容器后自动生成。  </li>
+<li><p>root 用户使用全局范围内的 CNI 插件，podman 默认使用 <code>bridge</code>、<code>portmap</code> 插件，其配置文件如下：    </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line">$ cat /etc/cni/net.d/87-podman-bridge.conflist</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">"cniVersion"</span>: <span class="string">"0.4.0"</span>,</span><br><span class="line">  <span class="string">"name"</span>: <span class="string">"podman"</span>,</span><br><span class="line">  <span class="string">"plugins"</span>: [</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="string">"type"</span>: <span class="string">"bridge"</span>,</span><br><span class="line">      <span class="string">"bridge"</span>: <span class="string">"cni-podman0"</span>,</span><br><span class="line">      <span class="string">"isGateway"</span>: <span class="literal">true</span>,</span><br><span class="line">      <span class="string">"ipMasq"</span>: <span class="literal">true</span>,</span><br><span class="line">      <span class="string">"hairpinMode"</span>: <span class="literal">true</span>,</span><br><span class="line">      <span class="string">"ipam"</span>: &#123;</span><br><span class="line">        <span class="string">"type"</span>: <span class="string">"host-local"</span>,</span><br><span class="line">        <span class="string">"routes"</span>: [&#123; <span class="string">"dst"</span>: <span class="string">"0.0.0.0/0"</span> &#125;],</span><br><span class="line">        <span class="string">"ranges"</span>: [</span><br><span class="line">          [</span><br><span class="line">            &#123;</span><br><span class="line">              <span class="string">"subnet"</span>: <span class="string">"10.88.0.0/16"</span>,</span><br><span class="line">              <span class="string">"gateway"</span>: <span class="string">"10.88.0.1"</span></span><br><span class="line">            &#125;</span><br><span class="line">          ]</span><br><span class="line">        ]</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;,</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="string">"type"</span>: <span class="string">"portmap"</span>,</span><br><span class="line">      <span class="string">"capabilities"</span>: &#123;</span><br><span class="line">        <span class="string">"portMappings"</span>: <span class="literal">true</span></span><br><span class="line">      &#125;</span><br><span class="line">    &#125;,</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="string">"type"</span>: <span class="string">"firewall"</span></span><br><span class="line">    &#125;,</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="string">"type"</span>: <span class="string">"tuning"</span></span><br><span class="line">    &#125;</span><br><span class="line">  ]</span><br><span class="line"><span class="comment"># 该配置文件位于 Podman 源码 cni/87-podman-bridge.conflist</span></span><br><span class="line"><span class="comment"># Podman 可调用 bridge、portmap 等 CNI 插件</span></span><br><span class="line"></span><br><span class="line">$ sudo podman inspect &lt;container_name&gt; | jq .[0].HostConfig.NetworkMode</span><br><span class="line">  <span class="string">"bridge"</span></span><br><span class="line"><span class="comment"># root 用户创建的容器网络模式</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>root 用户创建具有端口映射的容器时，iptables filter 表与 nat 表规则将相应增加：    </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># ----- filter 表中创建新容器后的新增规则 -----</span></span><br><span class="line">*filter</span><br><span class="line">-A FORWARD -m comment --comment <span class="string">"CNI firewall plugin rules"</span> -j CNI-FORWARD</span><br><span class="line">-A CNI-FORWARD -m comment --comment <span class="string">"CNI firewall plugin admin overrides"</span> -j CNI-ADMIN</span><br><span class="line">-A CNI-FORWARD -d 10.88.0.3/32 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT</span><br><span class="line"><span class="comment"># 新增规则：允许 3 层转发目标地址为 10.88.0.3 的流量（进入容器的流量），conntrack 模块进行连接状态追踪。</span></span><br><span class="line"><span class="comment"># 当容器通过 MASQUERADE 对外访问，回包再次进入容器宿主机时不再通过 DNAT 转发，而通过 conntrack </span></span><br><span class="line"><span class="comment"># 记录的连接状态直接转发至该规则并通过 cni-podman0 网桥进入容器。</span></span><br><span class="line">-A CNI-FORWARD -s 10.88.0.3/32 -j ACCEPT</span><br><span class="line"><span class="comment"># 新增规则：允许 3 层转发源地址为 10.88.0.3 的流量（出容器的流量）。</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># ----- nat 表中创建新容器后的新增规则 -----</span></span><br><span class="line">*nat</span><br><span class="line">-A PREROUTING -m addrtype --dst-type LOCAL -j CNI-HOSTPORT-DNAT</span><br><span class="line">-A POSTROUTING -m comment --comment <span class="string">"CNI portfwd requiring masquerade"</span> -j CNI-HOSTPORT-MASQ</span><br><span class="line">-A POSTROUTING -s 10.88.0.3/32 -m comment --comment <span class="string">"name: \"podman\" id: \"2d2b3521457cb1d9b7ae6657304d05789a854e7a48916276a40da543df9aa217\""</span> -j CNI-b6c5fb6c593e895d843cb5bd</span><br><span class="line"><span class="comment"># 新增规则：来自于 10.88.0.3 容器的流量转发至 CNI-b6c5fb6c593e895d843cb5bd 链</span></span><br><span class="line">-A OUTPUT -m addrtype --dst-type LOCAL -j CNI-HOSTPORT-DNAT</span><br><span class="line"><span class="comment"># 启用 CNI 后即创建的规则，该规则接收来自本地应用的流量并转发至 CNI-HOSTPORT-DNAT 链</span></span><br><span class="line">-A CNI-HOSTPORT-SETMARK -m comment --comment <span class="string">"CNI portfwd masquerade mark"</span> -j MARK --<span class="built_in">set</span>-xmark 0x2000/0x2000</span><br><span class="line">-A CNI-HOSTPORT-MASQ -m mark --mark 0x2000/0x2000 -j MASQUERADE</span><br><span class="line"><span class="comment">### 以下 6 条在创建新容器时同时创建 </span></span><br><span class="line">-A CNI-HOSTPORT-DNAT -p tcp -m comment --comment <span class="string">"dnat name: \"podman\" id: \"2d2b3521457cb1d9b7ae6657304d05789a854e7a48916276a40da543df9aa217\""</span> -m multiport --dports 8843 -j CNI-DN-b6c5fb6c593e895d843cb</span><br><span class="line"><span class="comment"># 自定义 DNAT 链，发送至本地 8843 端口的流量转发至 CNI-DN-b6c5fb6c593e895d843cb 链。</span></span><br><span class="line">-A CNI-b6c5fb6c593e895d843cb5bd -d 10.88.0.0/16 -m comment --comment <span class="string">"name: \"podman\" id: \"2d2b3521457cb1d9b7ae6657304d05789a854e7a48916276a40da543df9aa217\""</span> -j ACCEPT</span><br><span class="line"><span class="comment"># 允许转发目标网段为 10.88.0.0/16 的流量（进入容器的流量），该网段为容器所在的网络。</span></span><br><span class="line">-A CNI-b6c5fb6c593e895d843cb5bd ! -d 224.0.0.0/4 -m comment --comment <span class="string">"name: \"podman\" id: \"2d2b3521457cb1d9b7ae6657304d05789a854e7a48916276a40da543df9aa217\""</span> -j MASQUERADE</span><br><span class="line"><span class="comment"># MASQUERADE 出容器流量</span></span><br><span class="line">-A CNI-DN-b6c5fb6c593e895d843cb -s 10.88.0.0/16 -p tcp -m tcp --dport 8843 -j CNI-HOSTPORT-SETMARK</span><br><span class="line">-A CNI-DN-b6c5fb6c593e895d843cb -s 127.0.0.1/32 -p tcp -m tcp --dport 8843 -j CNI-HOSTPORT-SETMARK</span><br><span class="line">-A CNI-DN-b6c5fb6c593e895d843cb -p tcp -m tcp --dport 8843 -j DNAT --to-destination 10.88.0.3:443</span><br><span class="line"><span class="comment"># 自定义 DNAT 链实现容器宿主机至容器的端口映射</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>🚀 示例：外部访问容器内 Web 服务时，涉及的宿主机 iptables：<br><img src="external-access-container-web-service-iptables.jpg" alt="external-access-container-web-service-iptables.jpg">从外部访问容器内 Web 服务时，流量将通过 PREROUTING 链及自定义链（<code>CNI-HOSTPORT-DNAT</code>、<code>CNI-DN-xxxx</code>、<code>DNAT</code>），经由 FORWARD 链及自定义链（<code>CNI-FORWARD</code>）的三层转发与 <code>cni-podman0</code> 网桥的二层转发进入容器，容器对外响应的流量将经过 cni-podman0 网桥转发，并经过 CNI-FORWARD 链与 POSTROUTING 链及自定义链（<code>CNI-HOSTPORT-MASQ</code>）出容器宿主机。  </p>
+</li>
+<li><p>🚀 示例：直接从容器内访问外部时，返回容器的回包将直接使用 conntrack 模块追踪的连接状态，流量通过 <code>CNI-FORWARD</code> 链的三层转发与 cni-podman0 的二层转发至容器中，即，回包进入容器宿主机不再通过<code>CNI-HOSTPORT-DNAT</code>链。<br>如下所示，相关的 DNAT 链无流量通过（蓝框），CNI-FORWARD 链均有流量通过（蓝框）。<br><img src="container-access-external-iptables.jpg" alt="container-access-external-iptables.jpg"></p>
+<blockquote>
+<p>📌 <strong>Kubernetes 相关问题提示：</strong></p>
+<ol>
+<li>容器或 pod 通过 cni 网桥桥接的方式在 Kubernetes 或 OpenShift3 中需在计算节点（worker node）上配置 <code>net.bridge.bridge-nf-call-iptables</code> 与 <code>net.bridge.bridge-nf-call-iptables6</code> 内核参数，使 cni 二层网桥可调用 iptables 的 conntrack 模块，以解决前后端 pod 在同一节点上时，由于 pod 直连 cni 二层网桥，而二层网桥只实现二层转发，无法追踪前后端的连接状态，造成后端 pod 向前端 pod 回包时无法处于同一连接链路的问题，可 <a href="https://imroc.cc/k8s/faq/why-enable-bridge-nf-call-iptables/" target="_blank" rel="noopener">点击此处</a> 获得更多帮助。</li>
+<li>使用以上内核参数时，需加载 <code>br_netfilter</code> 内核模块方能生效。</li>
+</ol>
+</blockquote>
+</li>
+<li><p>使用 <code>iperf3</code> 工具的容器测试不同 rootfull 容器之间的网络性能，如下所示：<br><img src="rootfull-container-to-container-bandwidth.jpg" alt="rootfull-container-to-container-bandwidth.jpg"></p>
+</li>
+</ul>
+</li>
+<li><p>普通用户运行 rootless 容器网络分析：  </p>
+<ul>
+<li><code>slirp4netns</code> 程序支持 user rootless network namespace，而非通过 <code>iptables</code> 与 CNI 实现。  </li>
+<li><p>👉 普通用户使用端口映射运行 rootless 容器时，默认情况下只能使用宿主机 1024 以上的端口实现映射，但可使用 <code>net.ipv4.ip_unprivileged_port_start</code> 内核参数实现低于 1024 的端口开始映射，如下所示：    </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">### 方式 1：###</span></span><br><span class="line">$ sysctl -w net.ipv4.ip_unprivileged_port_start=80</span><br><span class="line"><span class="comment"># 临时配置：允许普通用户从 80 端口开始的端口映射运行 rootless 容器</span></span><br><span class="line">    </span><br><span class="line"><span class="comment">### 方式 2：###</span></span><br><span class="line">$ <span class="built_in">echo</span> <span class="string">"net.ipv4.ip_unprivileged_port_start=80"</span> &gt;&gt; /etc/sysctl.d/rootless.conf</span><br><span class="line"><span class="comment"># 永久配置：将该内核参数写入内核参数配置文件，使其开机永久生效。</span></span><br><span class="line">$ sysctl -p</span><br><span class="line"><span class="comment"># 使配置的内核参数生效</span></span><br><span class="line"></span><br><span class="line"> - 普通用户创建的容器网络模式为 `slirp4netns`（slirp4netns 软件包实现）。    </span><br><span class="line">    ```bash</span><br><span class="line">    $ podman inspect &lt;container_name&gt; | jq .[0].HostConfig.NetworkMode</span><br><span class="line">      <span class="string">"slirp4netns"</span></span><br><span class="line">    <span class="comment"># 普通用户创建的 rootless 容器网络模式</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>每个普通用户运行 rootless 容器都将生成 slirp4netns 进程用于隔离该用户的 <code>network namespace</code>，以下分别使用 godev 与 hualf 用户运行 rootless 容器：<br><img src="godev-rootless-container.jpg" alt="godev-rootless-container.jpg"><img src="hualf-rootless-container.jpg" alt="hualf-rootless-container.jpg"> </p>
+</li>
+<li>slirp4netns 实现的网络模式与带宽比较：<br><img src="rootless-slirp4netns-networking.jpg" alt="rootless-slirp4netns-networking.jpg"> </li>
+<li>使用 <code>iperf3</code> 工具的容器测试不同 rootless 容器之间的网络性能，如下所示：<br><img src="rootless-container-to-container-bandwidth.jpg" alt="rootless-container-to-container-bandwidth.jpg">对比 rootfull 容器之间的网络性能来看，slirp4netns 实现的 rootless 容器在不同的网络命名空间内的通信性能损耗较大，而 rootfull 容器之间的网络性能相比前者在此次测试中高出近 5 倍。 </li>
+<li>关于 slirp4netns 更加详细的内容，请参考 <a href="https://github.com/rootless-containers/slirp4netns" target="_blank" rel="noopener">Github 项目</a>。</li>
+</ul>
+</li>
+</ul>
+<h3 id="Podman-的-macvlan-网络实现："><a href="#Podman-的-macvlan-网络实现：" class="headerlink" title="Podman 的 macvlan 网络实现："></a>Podman 的 macvlan 网络实现：</h3><ul>
+<li><code>macvlan</code> 作为 CNI 在 Kubernetes 与 OpenShift v4 中作为 <code>Multus CNI</code> 支持的额外插件类型使用愈加广泛，集群中除了常规使用的 Flannel、Calico 等作为 <code>slow path</code> 的插件外，要求高性能的业务流量可使用 macvlan 直连 pod 宿主机物理网口实现 <code>fast path</code>。</li>
+<li>为后续熟悉以上场景的实现，因此在 Podman <code>rootfull</code> 容器中使用 macvlan 网络模式。</li>
+<li>关于 macvlan 的基础知识可参考 <a href="https://mp.weixin.qq.com/s?__biz=MzU1MzY4NzQ1OA==&amp;mid=2247484064&amp;idx=1&amp;sn=ffd745069b6c4aeac0589de00467b2f2&amp;chksm=fbee426dcc99cb7bdf26f5e6a21bbeaebba7ccd384a02f850d4461ea92331ed140edf98ffaec&amp;mpshare=1&amp;scene=1&amp;srcid=03049MKwF55OVgEZ4OCH39wd&amp;sharer_sharetime=1583337046541&amp;sharer_shareid=8eaca72194dae7b3d51d5c708436eee4#rd" target="_blank" rel="noopener">Linux 虚拟网卡技术：Macvlan</a> 与 <a href="https://cizixs.com/2017/02/14/network-virtualization-macvlan/" target="_blank" rel="noopener">linux 网络虚拟化：macvlan</a></li>
+<li><p>macvlan 特性由 <code>Linux kernel</code> 支持，笔者的实验环境满足 macvlan 的要求，请使用如下命令确定：  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">$ sudo lsmod | grep macvlan</span><br><span class="line"><span class="comment"># 若无任何返回，说明还未加载 macvlan 内核模块。</span></span><br><span class="line">$ sudo modprobe macvlan</span><br><span class="line"><span class="comment"># 加载 macvlan 内核模块，若执行报错，说明 kernel 不支持该特性。</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>podman 与 macvlan 类型网络的集成，如下所示：  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">$ sudo podman network create -d macvlan -o parent=ens33 &lt;network_name&gt;</span><br><span class="line">  /etc/cni/net.d/&lt;network_name&gt;.conflist</span><br><span class="line"><span class="comment"># 创建 macvlan 类型网络  </span></span><br><span class="line">$ sudo podman network ls</span><br><span class="line">$ sudo /opt/cni/bin/dhcp daemon</span><br><span class="line"><span class="comment"># 在另一个窗口中启动 dhcp 守护进程供 macvlan 插件调用，为容器网口分配 IP 地址。</span></span><br><span class="line">$ sudo podman run -it --rm \</span><br><span class="line">  --name &lt;container_name&gt; --network=&lt;network_name&gt; \</span><br><span class="line">  &lt;container_image&gt;:&lt;tag&gt; /bin/sh</span><br><span class="line"><span class="comment"># 创建支持 macvlan 类型网络的 rootfull 容器</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>从与 rootfull 容器在同一广播域的其他节点上 ping 该容器，可正常通信：<br><img src="podman-macvlan-network.png" alt="podman-macvlan-network.png"></p>
+<blockquote>
+<p>🤔 以上示例的容器中运行 Web 服务（可暴露 443 端口），使用 macvlan 网络模式可打通与同一广播域中外部节点的通信，但无法访问其中的服务，可采取何种方法解决该问题？  </p>
+</blockquote>
+</li>
+</ul>
+<h3 id="Podman-rootless-容器用户映射实现方式："><a href="#Podman-rootless-容器用户映射实现方式：" class="headerlink" title="Podman rootless 容器用户映射实现方式："></a>Podman rootless 容器用户映射实现方式：</h3><ul>
+<li>Podman rootless 容器的实现核心在于解决 network namespace（NetNS） 与 user namespace（UserNS） 的问题，前文已介绍 NetNS 的实现方式，后文将介绍 UserNS 的实现方式。</li>
+<li><p>若要使用 rootless 容器，需确认 OS 是否开启 user namespace 功能：  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ sudo sysctl -a | grep user\.max_user_namespaces</span><br><span class="line">  user.max_user_namespaces = 47494</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>系统上每创建一个用户就会在 <code>/etc/subuid</code> 与 <code>/etc/subgid</code> 中生成对应用户在其用户命名空间中的映射规则，以 /etc/subuid 为例，参数以冒号分隔，每个参数含义如下所示：  </p>
+<ul>
+<li>第一个参数（uid）：用户名称  </li>
+<li>第二个参数（loweruid）：用户命名空间中起始的映射 uid</li>
+</ul>
+</li>
+<li>第三个参数（count）：用户命名空间内部与外部可映射 uid 数量（可理解为所有容器普通用户的 uid 数量和）<br><img src="rootless-user-namespace-mapping.jpg" alt="rootless-user-namespace-mapping.jpg"></li>
+<li>以上两个文件允许运行进程的 uid 映射范围，在 <code>/proc/&lt;pid&gt;/uid_map</code> 中定义。</li>
+<li>可过滤容器 <code>conmon</code> 进程的 pid 确认每个容器中的 uid 映射情况，参见以下示例。</li>
+<li>关于以上两个文件的具体说明可参考 <code>newuidmap</code> 与 <code>newgidmap</code> 命令的 man 手册。</li>
+<li><p>可参考 Podman 官方推荐的命令创建 uid 的映射，如下所示：  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">$ sudo usermod --add-subuids 10000-75535 $(whoami)</span><br><span class="line"></span><br><span class="line"><span class="comment"># ----- 示例 -----</span></span><br><span class="line">$ sudo cat /etc/subuid</span><br><span class="line">  appuser:10000:500</span><br><span class="line">$ sudo cat /etc/subgid</span><br><span class="line">  appuser:500:50</span><br><span class="line"><span class="comment"># 该用户创建的 user namespace 中可以使用从 10000 开始的 500 个 UID 和从 500 开始的 50 个 GID 的映射。</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>🚀 示例：<br>普通用户 hualf 在 /etc/subuid 中映射为 hualf:165536:65536，说明在该用户的用户命名空间中可嵌套一个或多个用户命名空间（或容器），每个容器中的 root 用户 uid 0 都映射为 hualf 用户的 uid 1001（运行容器进程的用户），而容器中普通用户的 uid 映射至宿主机的 subuid 范围中，对于此例 subuid 范围为 165536~231071，容器中的 uid 1 用户映射为宿主机 uid 165536，因此容器中 admin 用户 uid 1000 映射为宿主机 uid 166535（165536+999）。<br>通过容器宿主机上每个普通用户的用户命名空间的 subuid 映射范围，可分配众多 uid 在 rootless 容器中运行应用进程。<br><img src="user-namespace-subuid-mapping-1-edited.png" alt="user-namespace-subuid-mapping-1-edited.png"><img src="user-namespace-subuid-mapping-2-edited.png" alt="user-namespace-subuid-mapping-2-edited.png"></p>
+</li>
+</ul>
+<h3 id="参考链接："><a href="#参考链接：" class="headerlink" title="参考链接："></a>参考链接：</h3><ul>
+<li><a href="https://projectatomic.io/blog/2018/02/reintroduction-podman/" target="_blank" rel="noopener">Reintroduction of Podman</a></li>
+<li><a href="https://fedoramagazine.org/podman-pods-fedora-containers/" target="_blank" rel="noopener">Using pods with Podman on Fedora</a></li>
+<li><a href="https://www.redhat.com/sysadmin/container-networking-podman" target="_blank" rel="noopener">Configuring container networking with Podman</a></li>
+<li><a href="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/building_running_and_managing_containers/index" target="_blank" rel="noopener">RedHat docs - Building, running, and managing Linux containers on Red Hat Enterprise Linux 8</a></li>
+<li><a href="https://developer.aliyun.com/article/700923" target="_blank" rel="noopener">容器安全拾遗 - Rootless Container初探</a></li>
+<li><a href="https://www.kernel.org/doc/html/latest/admin-guide/sysctl/user.html" target="_blank" rel="noopener">Documentation for /proc/sys/user/</a></li>
+<li><a href="https://docs.docker.com/compose/" target="_blank" rel="noopener">docker docs - Overview of Docker Compose</a></li>
+<li><a href="https://www.cni.dev/plugins/current/meta/firewall/" target="_blank" rel="noopener">CNI docs - firewall plugin</a></li>
+<li><a href="https://www.cni.dev/plugins/current/meta/firewall/" target="_blank" rel="noopener">CNI docs - Port-mapping plugin</a></li>
+<li><a href="https://fossies.org/linux/podman/docs/tutorials/basic_networking.md" target="_blank" rel="noopener">https://fossies.org/linux/podman/docs/tutorials/basic_networking.md</a></li>
+</ul>
+
+
+                <hr>
+
+                
+
+                <ul class="pager">
+                    
+                        <li class="previous">
+                            <a href="/2022/12/05/podman-usage-practice/" data-toggle="tooltip" data-placement="top" title="Podman 容器原理与使用（2）">&larr; Previous Post</a>
+                        </li>
+                    
+                    
+                        <li class="next">
+                            <a href="/2022/11/28/fcos-rhcos-basic-usage/" data-toggle="tooltip" data-placement="top" title="📦 Fedora CoreOS 及 RHCOS 概述与应用">Next Post &rarr;</a>
+                        </li>
+                    
+                </ul>
+
+                
+
+                
+
+            </div>
+    <!-- Side Catalog Container -->
+        
+
+    <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5><a href="/tags/">FEATURED TAGS</a></h5>
+                    <div class="tags">
+                       
+                          <a class="tag" href="/tags/#云原生" title="云原生">云原生</a>
+                        
+                          <a class="tag" href="/tags/#容器" title="容器">容器</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+                <hr>
+                <h5>FRIENDS</h5>
+                <ul class="list-inline">
+
+                    
+                        <li><a href="https://github.com/Alberthua-Perl" target="_blank">Alberthua</a></li>
+                    
+                        <li><a href="https://github.com/xwanli0923" target="_blank">xwanli0923</a></li>
+                    
+                </ul>
+                
+            </div>
+
+        </div>
+    </div>
+</article>
+
+
+
+
+
+
+
+
+
+    <!-- Footer -->
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://github.com/Alberthua-Perl">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; Alberthua Blog 2022 
+                    <br>
+                    Theme by <a href="http://huangxuan.me">Hux</a> 
+                    <span style="display: inline-block; margin: 0 5px;">
+                        <i class="fa fa-heart"></i>
+                    </span> 
+                    Ported by <a href="http://blog.kaijun.rocks">Kaijun</a> | 
+                    <iframe
+                        style="margin-left: 2px; margin-bottom:-5px;"
+                        frameborder="0" scrolling="0" width="91px" height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=kaijun&repo=hexo-theme-huxblog&type=star&count=true" >
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/js/jquery.min.js"></script>
+
+<!-- Bootstrap Core JavaScript -->
+<script src="/js/bootstrap.min.js"></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/js/hux-blog.min.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- 
+     Because of the native support for backtick-style fenced code blocks 
+     right within the Markdown is landed in Github Pages, 
+     From V1.6, There is no need for Highlight.js, 
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0  
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/    
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("https://alberthua-perl.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("https://cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- Side Catalog -->
+
+
+
+
+
+<!-- Image to hack wechat -->
+<img src="https://alberthua-perl.github.io/img/icon_wechat.png" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work -->
+
+</body>
+
+</html>
