@@ -13,11 +13,11 @@
 
     <title>
         
-          Alberthua 的博客 | Alberthua&#39;s Blog
+          部署 loganalyzer 管理集中式日志 - Alberthua 的博客 | Alberthua&#39;s Blog
         
     </title>
 
-    <link rel="canonical" href="https://alberthua-perl.github.io/">
+    <link rel="canonical" href="https://alberthua-perl.github.io/2022/12/05/loganalyzer-rsyslog-mysql/">
 
     <!-- Bootstrap Core CSS -->
     <link rel="stylesheet" href="/css/bootstrap.min.css">
@@ -147,353 +147,130 @@
 
 
     <!-- Main Content -->
-    <!-- Page Header -->
-<header class="intro-header" style="background-image: url('/img/home-bg.jpg')">
+    
+<!-- Image to hack wechat -->
+<!-- <img src="https://alberthua-perl.github.io/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="{{ site.baseurl }}/{% if page.header-img %}{{ page.header-img }}{% else %}{{ site.header-img }}{% endif %}" width="0" height="0"> -->
+
+<!-- Post Header -->
+<style type="text/css">
+    header.intro-header{
+        background-image: url('hello-world-dark-bg.jpg')
+    }
+</style>
+<header class="intro-header" >
     <div class="container">
         <div class="row">
-            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 ">
-                <div class="site-heading">
-                    <h1>Alberthua Blog</h1>
-                    <!--<hr class="small">-->
-                    <span class="subheading">让我们一起探索世界！💪 | Thumbs Up for Cloud Native 🤘</span>
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                          <a class="tag" href="/tags/#Linux" title="Linux">Linux</a>
+                        
+                          <a class="tag" href="/tags/#容器" title="容器">容器</a>
+                        
+                    </div>
+                    <h1>部署 loganalyzer 管理集中式日志</h1>
+                    <h2 class="subheading">Deploy loganalyzer to Manage Centralized Logs</h2>
+                    <span class="meta">
+                        Posted by Alberthua on
+                        2022-12-05
+                    </span>
                 </div>
             </div>
         </div>
     </div>
 </header>
 
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
 
-
-<!-- Main Content -->
-<div class="container">
-    <div class="row">
-        
-
-<!-- USE SIDEBAR -->
     <!-- Post Container -->
             <div class="
-                col-lg-8 col-lg-offset-1
-                col-md-8 col-md-offset-1
-                col-sm-12
-                col-xs-12
-                post-container
-            ">
-            
-                <!-- Main Content -->
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
 
-
-<div class="post-preview">
-
-    <a href="/2022/12/05/loganalyzer-rsyslog-mysql/">
-        <h2 class="post-title">
-            部署 loganalyzer 管理集中式日志
-        </h2>
-        <h3 class="post-subtitle">
-            Deploy loganalyzer to Manage Centralized Logs
-        </h3>
-        <div class="post-content-preview">
-            文档说明：
-OS 版本：Red Hat Enterprise Linux 8.2 (Ootpa)
-Podman 版本：podman-1.9.3-2.module+el8.2.1+6867+366c07d6.x86_64
-loganalyzer 版本：loganalyzer-4.1.11.tar.gz
-该示例中使用 yum 安装的软件包若未指定特定版本均为系统自带软件包。
-
-架构示例：如图所示......
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Alberthua on
-        2022-12-05
-    </p>
-
-</div>
-<hr>
-
-<div class="post-preview">
-
-    <a href="/2022/12/05/podman-usage-practice/">
-        <h2 class="post-title">
-            Podman 容器原理与使用（2）
-        </h2>
-        <h3 class="post-subtitle">
-            Podman Architecture and Usage (2)
-        </h3>
-        <div class="post-content-preview">
-            文档说明：
-上一篇 已说明 Podman 原理与实现，该文档将继续说明 Podman 容器的使用与实践。
-
-文档目录：
-podman 单容器使用及通信方式示例
-使用 podman-compose 实现 Gogs 轻量级代码仓库
-podman pod 多容器编排使用示例
-使用 podman kube play 实现 WordPress 的一键部署
-Podman 使用报错示例
-Podman 有待......
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Alberthua on
-        2022-12-05
-    </p>
-
-</div>
-<hr>
-
-<div class="post-preview">
-
-    <a href="/2022/12/05/podman-arch-usage/">
-        <h2 class="post-title">
-            Podman 容器原理与使用（1）
-        </h2>
-        <h3 class="post-subtitle">
-            Podman Architecture and Usage (1)
-        </h3>
-        <div class="post-content-preview">
-            文档说明：
-实验用 OS 版本：  
-CentOS 7.9、RHEL 8.0、RHEL 8.2、Ubuntu 20.04.3 LTS
-
-
-实验用 kernel 版本：  
-3.10.0-1160.41.1.el7.x86_64  
-4.18.0-193.el8.x86_64  
-5.14.0-1.el7.elrepo.x86_64
-
-
-实验用 Podman 版本：1.6.4、3.2.3、3.......
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Alberthua on
-        2022-12-05
-    </p>
-
-</div>
-<hr>
-
-<div class="post-preview">
-
-    <a href="/2022/11/28/fcos-rhcos-basic-usage/">
-        <h2 class="post-title">
-            📦 Fedora CoreOS 及 RHCOS 概述与应用
-        </h2>
-        <h3 class="post-subtitle">
-            Fedora CoreOS & RHCOS Basic and Usage
-        </h3>
-        <div class="post-content-preview">
-            文档目录：
-关键技术点
-Fedora CoreOS 及 RHCOS 介绍与特性
-Ignition 在 FCOS 或 RHCOS 中的工作特点
-Ignition 对 OpenShift 4 集群主机的处理顺序
-Fedora CoreOS 的安装环境与工具说明
-Fedora CoreOS 的定制化安装与验证
-参考链接
-
-关键技术点：
-以下技术点在文中将根据 Fedora CoreOS 及 RHC......
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Alberthua on
-        2022-11-28
-    </p>
-
-</div>
-<hr>
-
-<div class="post-preview">
-
-    <a href="/2022/11/28/k8s-cluster-resource-basic/">
-        <h2 class="post-title">
-            ☸️ Kubernetes 集群与资源管理基础
-        </h2>
-        <h3 class="post-subtitle">
-            Kubernetes Cluster and Resource Basic
-        </h3>
-        <div class="post-content-preview">
-            文档说明：
-该文档使用的 Kubernetes 版本为 1.12.x
-文档所示的命令可能与当前 Kubernetes 版本存在差异，请以实际使用的版本为基准！
-
-文档目录：
-Kubernetes 集群架构概览
-Kubernetes 集群的资源对象管理
-资源对象操作相关命令
-
-Kubernetes 集群架构概览：
-API Server 作为 Kubernetes 集群的网关（gateway）
-......
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Alberthua on
-        2022-11-28
-    </p>
-
-</div>
-<hr>
-
-<div class="post-preview">
-
-    <a href="/2022/11/28/kani-deploy-k8s/">
-        <h2 class="post-title">
-            Kani - Ansible 快速部署与管理 Kubernetes v1.22.1
-        </h2>
-        <h3 class="post-subtitle">
-            Use Kani to Rapidly Deploy Kubernetes Cluster
-        </h3>
-        <div class="post-content-preview">
-            文档目录：
-项目目的
-实施环境
-需要更改的参数
-实施过程中遇到的问题与解决方法
-Kani 的使用方法
-参考链接
-
-项目目的：
-虽然目前具有大量的 Kubernetes 集群自动化部署解决方案，其中官方的 KubeSpray 即为使用 Ansible 的方式部署，但想尝试自己手动造轮子，因此创建了 Kani 项目。
-Kani 项目的目的在于使用 Ansible 快速部署与管理 Kubernet......
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Alberthua on
-        2022-11-28
-    </p>
-
-</div>
-<hr>
-
-<div class="post-preview">
-
-    <a href="/2022/11/26/golang-environment-deploy/">
-        <h2 class="post-title">
-            Go 语言开发环境部署
-        </h2>
-        <h3 class="post-subtitle">
-            Deploy Golang Developement Environment on Linux and Windows
-        </h3>
-        <div class="post-content-preview">
-            文档说明：
-OS 版本：CentOS Linux release 7.4.1708 (Core)
-Golang 版本：go1.12 linux/amd64
-
-文档目录：
-Windows 安装 Go 语言环境
-Windows 下 Sublime Text 3 安装配色方案与 Golang 开发环境插件
-Linux 安装 Go 语言环境
-vim-go 插件配置 Go 语言开发环境
-
-Window......
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Alberthua on
-        2022-11-26
-    </p>
-
-</div>
-<hr>
-
-
-
-<!-- Pager -->
-
-<ul class="pager">
-    
-    
+                <h3 id="文档说明："><a href="#文档说明：" class="headerlink" title="文档说明："></a>文档说明：</h3><ul>
+<li>OS 版本：Red Hat Enterprise Linux 8.2 (Ootpa)</li>
+<li>Podman 版本：podman-1.9.3-2.module+el8.2.1+6867+366c07d6.x86_64</li>
+<li>loganalyzer 版本：loganalyzer-4.1.11.tar.gz</li>
+<li>该示例中使用 yum 安装的软件包若未指定特定版本均为系统自带软件包。</li>
+</ul>
+<h3 id="架构示例："><a href="#架构示例：" class="headerlink" title="架构示例："></a>架构示例：</h3><p><img src="loganalyzer-mysql-rsyslogserver.jpg" alt="loganalyzer-mysql-rsyslogserver.jpg"><br>如图所示，<code>rsyslog-server</code> 服务端收集来自 <code>rsyslog-client</code> 客户端发送的指定系统日志数据，并且 Apache httpd server 与 MySQL 数据库均以容器的方式一同部署于服务端。</p>
+<h3 id="loganalyzer-与-MySQL-的容器化部署要点："><a href="#loganalyzer-与-MySQL-的容器化部署要点：" class="headerlink" title="loganalyzer 与 MySQL 的容器化部署要点："></a>loganalyzer 与 MySQL 的容器化部署要点：</h3><ul>
+<li>部署用 <code>Shell</code> 脚本可参考 <a href="https://github.com/Alberthua-Perl/scripts-confs/blob/master/deploy-rsyslog-viewer/deploy-rsyslog-viewer.sh" target="_blank" rel="noopener">此链接</a>。</li>
+<li>部署用节点：<ul>
+<li>serverb.lab.example.com (RH294v8.0 course)：2 vCPU，4GiB RAM</li>
+<li>firewalld 服务已禁用   </li>
+<li>SELinux 为 enforcing 模式   </li>
+</ul>
+</li>
+<li>此次使用 <strong><code>podman runtime</code></strong> 容器运行时运行所有容器。</li>
+<li>该部署环境中已预配置 <code>Red Hat Quay 3.3.0</code>，并且已将 <code>mysql-57-rhel7:latest</code> 上传至该容器镜像仓库中的 <code>rhscl organization</code> 中。</li>
+<li>将容器镜像上传至 Quay 中，需提前创建相应的 organizaion，否则将上传失败报错！<br><img src="quay-push-error-1.jpg" alt="quay-push-error-1..jpg"><img src="quay-push-error-2.jpg" alt="quay-push-error-2.jpg"></li>
+<li>务必关闭并禁用节点 <code>firewalld</code> 服务，该服务与 <code>iptables NAT</code> 规则冲突，在启用的情况下将无法实现容器的端口映射，iptables NAT 规则无法建立！</li>
+<li><p>由于 loganalyzer 容器与 MySQL 容器均位于同一节点上，且容器通过 <code>CNI bridge</code> (cni-podman0) 连接，因此 loganalyzer 连接 MySQL 时应使用节点的 IP 地址，但 MySQL 对指定用户的授权语句应使用 <code>CNI Gateway</code> 的 IP 地址，否则在前端 Web 上无法建立连接。</p>
+ <figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">grant</span> <span class="keyword">all</span> <span class="keyword">on</span> Syslog.* <span class="keyword">to</span> <span class="string">'$&#123;SYSLOG_USER&#125;'</span>@<span class="string">'$&#123;CNI_GATEWAY&#125;'</span> <span class="keyword">identified</span> <span class="keyword">by</span> <span class="string">'$&#123;SYSLOG_PASS&#125;'</span>;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>loganalyzer 容器镜像基于 <code>Apache httpd server</code> 构建，可参考 <a href="https://github.com/Alberthua-Perl/Dockerfile-examples/tree/master/loganalyzer-viewer" target="_blank" rel="noopener">此链接</a>。</p>
+</li>
+<li>loganalyzer 项目基于 PHP，可作为 MySQL 数据库检索日志数据的 Web 前端。</li>
+<li>MySQL 容器使用持久化存储（卷映射）时，由于使用 Red Hat 官方镜像，启动容器时不使用 root 用户运行 mysql 守护进程，而使用 <strong>UID 27</strong> (mysql) 运行，需设置宿主机映射目录的所有者与所属组，不更改将无法运行容器。    </li>
+<li>容器中报错日志如下所示：<img src="mysql-container-run-error.jpg" alt="mysql-container-run-error.jpg"></li>
+<li>loganalyzer 容器与 MySQL 容器部署成功且正常运行后，需访问 loganalyzer 容器所在节点以完成两者的对接，如下所示：<img src="loganalyzer-web-1.jpg" alt="loganalyzer-web-1.jpg"><img src="loganalyzer-web-2.jpg" alt="loganalyzer-web-2.jpg"><img src="loganalyzer-web-3.jpg" alt="loganalyzer-web-3.jpg"><img src="loganalyzer-web-4.jpg" alt="loganalyzer-web-4.jpg"><img src="loganalyzer-web-5.jpg" alt="loganalyzer-web-5.jpg"><img src="loganalyzer-web-6.jpg" alt="loganalyzer-web-6.jpg"><img src="loganalyzer-web-7.jpg" alt="loganalyzer-web-7.jpg"><img src="loganalyzer-web-8.jpg" alt="loganalyzer-web-8.jpg"><img src="loganalyzer-web-9.jpg" alt="loganalyzer-web-9.jpg"><img src="loganalyzer-web-10.jpg" alt="loganalyzer-web-10.jpg"></li>
+</ul>
+<h3 id="loganalyzer-的常规部署要点："><a href="#loganalyzer-的常规部署要点：" class="headerlink" title="loganalyzer 的常规部署要点："></a>loganalyzer 的常规部署要点：</h3><ul>
+<li>loganalyzer 也可直接使用解压的压缩包（PHP 源码）实现安装，方法位于部署脚本的最后注释部分。</li>
+<li>SELinux 为 <code>enforcing</code> 模式时，loganalyzer 无法与 MySQL 容器连接，需打开 PHP 与 MySQL的网络连接布尔值以支持。<img src="selinux-php-mysql-connection.jpg" alt="selinux-php-mysql-connection.jpg"></li>
 </ul>
 
 
+                <hr>
 
-                <!-- 如果开启评论功能 -->
+                
+
+                <ul class="pager">
+                    
+                    
+                        <li class="next">
+                            <a href="/2022/12/05/podman-usage-practice/" data-toggle="tooltip" data-placement="top" title="Podman 容器原理与使用（2）">Next Post &rarr;</a>
+                        </li>
+                    
+                </ul>
+
+                
+
                 
 
             </div>
+    <!-- Side Catalog Container -->
+        
+
     <!-- Sidebar Container -->
+
             <div class="
-                col-lg-3 col-lg-offset-0
-                col-md-3 col-md-offset-0
-                col-sm-12
-                col-xs-12
-                sidebar-container
-            ">
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
                 <!-- Featured Tags -->
                 
                 <section>
                     <!-- no hr -->
                     <h5><a href="/tags/">FEATURED TAGS</a></h5>
                     <div class="tags">
+                       
+                          <a class="tag" href="/tags/#Linux" title="Linux">Linux</a>
                         
-                            
-                            <a href="/tags/#Linux" title="Linux" rel="2">Linux</a>
-                            
-                        
-                            
-                        
-                            
-                        
-                            
-                        
-                            
-                            <a href="/tags/#云原生" title="云原生" rel="5">云原生</a>
-                            
-                        
-                            
-                            <a href="/tags/#Kubernetes" title="Kubernetes" rel="2">Kubernetes</a>
-                            
-                        
-                            
-                        
-                            
-                            <a href="/tags/#容器" title="容器" rel="3">容器</a>
-                            
+                          <a class="tag" href="/tags/#容器" title="容器">容器</a>
                         
                     </div>
                 </section>
                 
 
-                <!-- Short About -->
-                <section class="visible-md visible-lg">
-                    <hr><h5><a href="/about/">ABOUT ME</a></h5>
-                    <div class="short-about">
-
-                        
-                            <img src="/img/avatar.jpg" />
-                        
-
-                        
-                            <p>奔跑吧少年✊ 尽情享受沿途的美景🏃‍♂️🌳🌾🍂☃</p>
-                        
-
-                        <!-- SNS Link -->
-                        <ul class="list-inline">
-                            
-                            
-                            
-
-                            
-
-                            
-
-                            
-                                <li>
-                                    <a target="_blank"  href="https://github.com/Alberthua-Perl">
-                                        <span class="fa-stack fa-lg">
-                                            <i class="fa fa-circle fa-stack-2x"></i>
-                                            <i class="fa fa-github fa-stack-1x fa-inverse"></i>
-                                        </span>
-                                    </a>
-                                </li>
-                            
-                            
-                            
-                            
-                        </ul>
-                    </div>
-                </section>
-                
                 <!-- Friends Blog -->
                 
                 <hr>
@@ -508,9 +285,17 @@ Window......
                 </ul>
                 
             </div>
-        
+
+        </div>
     </div>
-</div>
+</article>
+
+
+
+
+
+
+
 
 
     <!-- Footer -->
