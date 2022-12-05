@@ -13,11 +13,11 @@
 
     <title>
         
-          About - Alberthua 的博客 | Alberthua&#39;s Blog
+          Code Server v4.8.3 容器镜像构建 - Alberthua 的博客 | Alberthua&#39;s Blog
         
     </title>
 
-    <link rel="canonical" href="https://alberthua-perl.github.io/about/">
+    <link rel="canonical" href="https://alberthua-perl.github.io/2022/12/05/golang-code-server/">
 
     <!-- Bootstrap Core CSS -->
     <link rel="stylesheet" href="/css/bootstrap.min.css">
@@ -147,148 +147,123 @@
 
 
     <!-- Main Content -->
-    <!-- Page Header -->
-<header class="intro-header" style="background-image: url('/img/about-bg.svg')">
+    
+<!-- Image to hack wechat -->
+<!-- <img src="https://alberthua-perl.github.io/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="{{ site.baseurl }}/{% if page.header-img %}{{ page.header-img }}{% else %}{{ site.header-img }}{% endif %}" width="0" height="0"> -->
+
+<!-- Post Header -->
+<style type="text/css">
+    header.intro-header{
+        background-image: url('code-server-bg.png')
+    }
+</style>
+<header class="intro-header" >
     <div class="container">
         <div class="row">
-            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 ">
-                <div class="site-heading">
-                    <h1>About</h1>
-                    <!--<hr class="small">-->
-                    <span class="subheading">Alberthua | 我和博客的故事</span>
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                          <a class="tag" href="/tags/#Golang" title="Golang">Golang</a>
+                        
+                    </div>
+                    <h1>Code Server v4.8.3 容器镜像构建</h1>
+                    <h2 class="subheading">Build Code Server for Golang</h2>
+                    <span class="meta">
+                        Posted by Alberthua on
+                        2022-12-05
+                    </span>
                 </div>
             </div>
         </div>
     </div>
 </header>
 
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
 
-
-<!-- Main Content -->
-<div class="container">
-    <div class="row">
-        
-
-<!-- USE SIDEBAR -->
     <!-- Post Container -->
             <div class="
-                col-lg-8 col-lg-offset-1
-                col-md-8 col-md-offset-1
-                col-sm-12
-                col-xs-12
-                post-container
-            ">
-            
-                <h2 id="我和博客的故事"><a href="#我和博客的故事" class="headerlink" title="我和博客的故事"></a>我和博客的故事</h2><p>毕业于国内某高等院校生物技术专业，曾从事 <code>Bioinformation</code> 数据分析领域工作 3 年左右，主要实施人类基因组 🧬 与 RNA 深度测序数据与位点分析解读 👨‍💻，遂转战 <code>Linux</code> 🐧 领域至今，目前就职于某国际开源系统公司担任 <code>Instructor</code>。</p>
-<p>回想起来，应该是在从事数据分析岗时和 <code>Linux</code> 结下不解之缘，当时项目中使用到 <code>Shell/Perl/Python</code> 等各类脚本语言构建的数据分析 <code>Pipeline</code>（区别于 DevOps 中的 Pipeline），时常由于单日计算负载过高或存储性能降低而处理 <code>Linux</code> 服务器的相关事务，这样一来二去就成为了组内对 Linux 相对熟悉的成员，也就在那个时候决心彻底放下以前拥抱全新的领域！</p>
-<p>时至今日，接触到的技术栈涉及传统的 <code>Linux</code> 系统、<code>KVM &amp; Qemu</code> 虚拟化技术、<code>Open vSwitch</code> SDN 网络基础、<code>OpenStack</code> 基础架构平台、<code>Ansible</code> 自动化运维、<code>DevOps</code> 文化与理念基础、<code>Kubernetes &amp; OpenShift</code> 原理与集群管理、<code>Cloud Native</code> 应用开发（学习中）等等，内容过多此处不再一一列出。如果谈及编程语言，那必然是让人又爱又恨的 <code>Perl</code> 语言了，作为骨灰级的瑞士军刀型语言向来以个性、自由、灵活、强大而著称，这就导致我在学这门语言之初，花了九牛二虎之力，不过好在掌握了大部分的使用方法（现在几乎遗忘殆尽 😂），Perl 语言使用上的随心所欲也导致了我后续在学习 <code>Python</code> 的过程中始终无法遵循其语法规范而一度荒废，最后只好从入门到放弃 😭。不过，对第一门语言还是有感情的，毕竟使用了那么多年（不能做渣男 😎），有时间还是好好回顾继续深入学习吧！</p>
-<p>✨ 我的博客中将记录技术与编程语言的学习总结、日常工作中的避坑提示、工作生活中的碎碎念等，谨以此一亩三分地用以记录吧。博客中的文章可能未能与我的 <a href="https://github.com/Alberthua-Perl/tech-docs" target="_blank" rel="noopener">GitHub</a> 中的技术文档及时同步，您可直接访问上述链接以获取最新的状态！</p>
-<p>🚀 如果您对我的文章感兴趣、有疑问、提建议，欢迎访问我的 <a href="https://github.com/Alberthua-Perl" target="_blank" rel="noopener">GitHub</a> 主页，或直接邮件 <a href="mailto:hualongfeiyyy@163.com" target="_blank" rel="noopener">hualongfeiyyy@163.com</a> 联系，我将感到十分荣幸！</p>
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <h3 id="文档说明："><a href="#文档说明：" class="headerlink" title="文档说明："></a>文档说明：</h3><ul>
+<li>🔗 可参考 <a href="https://github.com/Alberthua-Perl/dockerfile-s2i-demo/tree/master/code-server-4.8.3" target="_blank" rel="noopener">该链接</a>，以获得项目的 GitHub 仓库。</li>
+<li><code>Red Hat OpenShift</code> 中使用 <code>Red Hat Code Ready Workspace</code> 作为 PaaS 平台中的实时 IDE 开发平台，可兼容众多开发语言。</li>
+<li>该示例的目的在于构建类似于 Red Hat Code Ready Workspace 的容器化 Golang IDE 开发平台。</li>
+<li>可使用此 Golang IDE 开发平台提供与本地 <code>Microsoft VS Code</code> 平台相同的功能，并可实现实时登录开发环境与远程代码仓库的一致性。</li>
+<li><p>容器镜像构建与使用：</p>
+<ul>
+<li>该容器镜像可提供的功能：<ul>
+<li>👉 基于 <code>VS Code</code> 的 <code>Web UI</code> 开发界面</li>
+<li>👉 集成 <code>Golang v1.19.3</code> 语言开发环境</li>
+</ul>
+</li>
+<li>使用该目录中的 <code>Dockerfile</code> 构建 <code>Code Server v4.8.3</code> 容器镜像，如下所示：<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">$ tree -h .</span><br><span class="line">  .</span><br><span class="line">  ├── [103M]  code-server_4.8.3_amd64.deb</span><br><span class="line">  ├── [1.9K]  Dockerfile</span><br><span class="line">  ├── [ 17K]  oh-my-zsh-install.sh</span><br><span class="line">  ├── [1.3K]  README.md</span><br><span class="line">  └── [ 614]  sources.list</span><br><span class="line">  </span><br><span class="line">$ sudo docker build -t golang-code-server:v1.1 .</span><br><span class="line"><span class="comment"># 在当前目录上下文中构建</span></span><br><span class="line">$ sudo docker run -d --name=golang-code-server -p 8080:8080 golang-code-server:v1.1</span><br><span class="line"><span class="comment"># 使用构建的容器镜像运行容器，并登录访问 Web 界面。</span></span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<blockquote>
+<p>💥 注意：由于 <code>code-server_4.8.3_amd64.deb</code> 软件包的容量大小限制无法上传至 GitHub 中，可从  <a href="https://pan.baidu.com/s/1ul4ZYZa1Cpmp_5fXxyGJtg" target="_blank" rel="noopener">百度网盘</a> 下载，提取码为 <code>no8o</code>。</p>
+</blockquote>
+<ul>
+<li>该容器镜像可在 <code>Kubernetes</code> 或 <code>OpenShift</code> 集群外使用 <code>Docker</code> 或 <code>Podman</code> 先行测试，再导入容器镜像仓库 <code>registry</code>，用于后续的部署使用。</li>
+</ul>
+</li>
+</ul>
+<h3 id="参考链接："><a href="#参考链接：" class="headerlink" title="参考链接："></a>参考链接：</h3><ul>
+<li><a href="https://github.com/coder/code-server" target="_blank" rel="noopener">GitHub - coder/code-server</a></li>
+<li><a href="https://coder.com/docs/code-server/latest" target="_blank" rel="noopener">code-server v4.8.0 docs</a></li>
+<li><a href="https://hub.docker.com/_/golang" target="_blank" rel="noopener">dockerhub - golang</a></li>
+<li><a href="https://www.jb51.net/article/261704.htm" target="_blank" rel="noopener">云 vscode 搭建之使用容器化部署的方法</a></li>
+<li><a href="https://blog.51cto.com/u_15061952/3607022" target="_blank" rel="noopener">docker build 时出现错误 “debconf: unable to initialize frontend: Dialog” 如何处理？</a></li>
+</ul>
 
 
-                <!-- 如果开启评论功能 -->
+                <hr>
+
                 
-                    <hr>
 
+                <ul class="pager">
                     
-
                     
-
-
+                        <li class="next">
+                            <a href="/2022/12/05/redhat-quay-v3-registry/" data-toggle="tooltip" data-placement="top" title="Red Hat Quay v3 registry 原理与实现">Next Post &rarr;</a>
+                        </li>
                     
+                </ul>
 
-                    
-
-
+                
 
                 
 
             </div>
+    <!-- Side Catalog Container -->
+        
+
     <!-- Sidebar Container -->
+
             <div class="
-                col-lg-3 col-lg-offset-0
-                col-md-3 col-md-offset-0
-                col-sm-12
-                col-xs-12
-                sidebar-container
-            ">
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
                 <!-- Featured Tags -->
                 
                 <section>
                     <!-- no hr -->
                     <h5><a href="/tags/">FEATURED TAGS</a></h5>
                     <div class="tags">
-                        
-                            
-                            <a href="/tags/#Golang" title="Golang" rel="2">Golang</a>
-                            
-                        
-                            
-                            <a href="/tags/#Linux" title="Linux" rel="2">Linux</a>
-                            
-                        
-                            
-                        
-                            
-                        
-                            
-                            <a href="/tags/#云原生" title="云原生" rel="6">云原生</a>
-                            
-                        
-                            
-                            <a href="/tags/#Kubernetes" title="Kubernetes" rel="2">Kubernetes</a>
-                            
-                        
-                            
-                        
-                            
-                            <a href="/tags/#容器" title="容器" rel="4">容器</a>
-                            
+                       
+                          <a class="tag" href="/tags/#Golang" title="Golang">Golang</a>
                         
                     </div>
                 </section>
                 
 
-                <!-- Short About -->
-                <section class="visible-md visible-lg">
-                    <hr><h5><a href="/about/">ABOUT ME</a></h5>
-                    <div class="short-about">
-
-                        
-                            <img src="/img/avatar.jpg" />
-                        
-
-                        
-                            <p>奔跑吧少年✊ 尽情享受沿途的美景🏃‍♂️🌳🌾🍂☃</p>
-                        
-
-                        <!-- SNS Link -->
-                        <ul class="list-inline">
-                            
-                            
-                            
-
-                            
-
-                            
-
-                            
-                                <li>
-                                    <a target="_blank"  href="https://github.com/Alberthua-Perl">
-                                        <span class="fa-stack fa-lg">
-                                            <i class="fa fa-circle fa-stack-2x"></i>
-                                            <i class="fa fa-github fa-stack-1x fa-inverse"></i>
-                                        </span>
-                                    </a>
-                                </li>
-                            
-                            
-                            
-                            
-                        </ul>
-                    </div>
-                </section>
-                
                 <!-- Friends Blog -->
                 
                 <hr>
@@ -303,9 +278,17 @@
                 </ul>
                 
             </div>
-        
+
+        </div>
     </div>
-</div>
+</article>
+
+
+
+
+
+
+
 
 
     <!-- Footer -->
