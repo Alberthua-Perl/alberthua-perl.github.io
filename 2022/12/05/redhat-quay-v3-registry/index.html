@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head><meta name="generator" content="Hexo 3.9.0">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="让我们一起探索世界！💪 | Thumbs Up for Cloud Native 🤘">
+    <meta name="keyword" content>
+    <link rel="shortcut icon" href="/img/favicon.ico">
+
+    <title>
+        
+          Red Hat Quay v3 registry 原理与实现 - Alberthua 的博客 | Alberthua&#39;s Blog
+        
+    </title>
+
+    <link rel="canonical" href="https://alberthua-perl.github.io/2022/12/05/redhat-quay-v3-registry/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/hux-blog.min.css">
+
+    <!-- Pygments Highlight CSS -->
+    <link rel="stylesheet" href="/css/highlight.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="https://cdn.staticfile.org/font-awesome/4.5.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+
+    <!-- Hux Delete, sad but pending in China
+    <link href='http://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/
+    css'>
+    -->
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- ga & ba script hoook -->
+    <script></script>
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">Alberthua Blog</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+
+                    
+
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/about/">About</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/archives/">Archives</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/tags/">Tags</a>
+                        </li>
+                        
+                    
+                    
+                </ul>
+            </div>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+
+    <!-- Main Content -->
+    
+<!-- Image to hack wechat -->
+<!-- <img src="https://alberthua-perl.github.io/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="{{ site.baseurl }}/{% if page.header-img %}{{ page.header-img }}{% else %}{{ site.header-img }}{% endif %}" width="0" height="0"> -->
+
+<!-- Post Header -->
+<style type="text/css">
+    header.intro-header{
+        background-image: url('/img/home-bg.jpg')
+    }
+</style>
+<header class="intro-header" >
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                          <a class="tag" href="/tags/#云原生" title="云原生">云原生</a>
+                        
+                          <a class="tag" href="/tags/#容器" title="容器">容器</a>
+                        
+                    </div>
+                    <h1>Red Hat Quay v3 registry 原理与实现</h1>
+                    <h2 class="subheading">Red Hat Quay v3 registry Architecture and Implement</h2>
+                    <span class="meta">
+                        Posted by Alberthua on
+                        2022-12-05
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <h3 id="文档目录："><a href="#文档目录：" class="headerlink" title="文档目录："></a>文档目录：</h3><ul>
+<li>常用私有容器镜像仓库</li>
+<li>Red Hat 支持的容器镜像仓库</li>
+<li>Red Hat 容器镜像安全</li>
+<li>Red Hat Quay v3 私有容器镜像仓库部署</li>
+<li>参考链接</li>
+</ul>
+<h3 id="常用私有容器镜像仓库："><a href="#常用私有容器镜像仓库：" class="headerlink" title="常用私有容器镜像仓库："></a>常用私有容器镜像仓库：</h3><ul>
+<li>Harbor v1/v2：由 <code>VMware</code> 主导开发，并从 <code>CNCF</code> 云原生计算基金会孵化成功。</li>
+<li><strong><code>Red Hat Quay v3</code></strong>：由 <code>Red Hat</code> 开源的私有容器镜像仓库，类似于 <code>CoreOS</code> 的 Quay。</li>
+<li>registry v2：<code>Docker</code> 公司发布的 v2 版本容器镜像仓库镜像，可直接运行提供服务。</li>
+<li>docker-distribution：由 <code>docker-distribution</code> RPM 软件包提供，<code>systemd</code> 方式运行。</li>
+</ul>
+<h3 id="Red-Hat-支持的容器镜像仓库："><a href="#Red-Hat-支持的容器镜像仓库：" class="headerlink" title="Red Hat 支持的容器镜像仓库："></a>Red Hat 支持的容器镜像仓库：</h3><ul>
+<li><strong>Red Hat Container Registry</strong>：<code>registry.access.redhat.com</code>  <ul>
+<li>该仓库为公共镜像仓库，用于托管 Red Hat 产品的镜像，无需身份验证。  </li>
+<li>但请注意，虽然此容器镜像仓库是公共的，但 Red Hat 的大多数容器镜像规定要求用户拥有激活的 Red Hat 产品订阅，并且他们遵守产品的终端用户协议（EUA）。  </li>
+<li>只有基于 Red Hat Enterprise Linux Universal Base Images (<code>UBI</code>) 的镜像可从该镜像仓库中自由地重新发布。</li>
+</ul>
+</li>
+<li><strong>Red Hat terms-based registry</strong>：<code>registry.redhat.io</code>  <ul>
+<li>该仓库为私有镜像仓库，用于托管 Red Hat 产品的镜像，并且需要身份验证。  </li>
+<li>从该仓库拉取镜像时，需提供 Red Hat Customer Portal 凭证（credential）进行身份验证。  </li>
+<li>对于共享环境，如 OpenShift 或 CI/CD 管道，可创建 <code>service account</code> 或身份验证令牌（token），以避免暴露个人凭据。</li>
+</ul>
+</li>
+<li><strong>Red Hat partner registry</strong>：<code>registry.connect.redhat.com</code>  <ul>
+<li>该仓库为私有镜像仓库，用于托管来自认证合作伙伴的第三方产品的镜像。  </li>
+<li>它还需提供 Red Hat Customer Portal 凭证进行身份验证。  </li>
+<li>它们可能受制于合伙伙伴的认购或许可。</li>
+</ul>
+</li>
+<li><strong>Quay.io</strong>：  <ul>
+<li>Red Hat 还管理 <code>Quay.io</code> 容器镜像仓库，任何人都可以注册一个免费帐户，并发布自己的容器镜像。  </li>
+<li>Red Hat 对任何托管在 Quay.io 上的容器镜像都没有提供保证。  </li>
+<li>大多数用户使用 Quay.io 作为一个公共镜像仓库，但是组织（organization）也可以购买允许使用 Quay.io 作为私有镜像仓库。<blockquote>
+<p>👉 关于 Red Hat 容器镜像仓库的说明可参考 <a href="https://access.redhat.com/RegistryAuthentication" target="_blank" rel="noopener">Red Hat Container Registry Authentication</a></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="Red-Hat-容器镜像安全："><a href="#Red-Hat-容器镜像安全：" class="headerlink" title="Red Hat 容器镜像安全："></a>Red Hat 容器镜像安全：</h3><ul>
+<li><a href="https://catalog.redhat.com/software/containers/search" target="_blank" rel="noopener">Red Hat Container Catalog</a>（RHCC）可提供构建 S2I 构建镜像的基础容器镜像，也可直接提供 S2I 构建镜像，Red Hat Container Catalog 通过 <code>https://registry.redhat.io</code> 作为容器镜像拉取与推送的 portal。</li>
+<li>该容器镜像仓库中的镜像通过 <code>Container Health Index</code> 进行安全性评估，可根据不同的评估结果选取开发者所需要的镜像，一般选择安全等级为 <code>A</code> 或 <code>B</code> 的镜像，以下以 <code>Go Toolset</code> 镜像为例确定其安全等级：<img src="go-toolset-catalog.jpg" alt="go-toolset-catalog.jpg"></li>
+<li>关于 <a href="https://access.redhat.com/articles/2803031" target="_blank" rel="noopener">Red Hat 容器镜像安全等级说明</a>，如下所示：<img src="catalog-health-index.jpg" alt="catalog-health-index.jpg"><ul>
+<li>Red Hat 安全评级说明文档可参考 <a href="https://access.redhat.com/security/updates/classification" target="_blank" rel="noopener">Understanding Red Hat security ratings</a></li>
+</ul>
+</li>
+<li>容器镜像的安全评分与分级可参考 <a href="https://access.redhat.com/blogs/product-security/posts/container-security-scoring" target="_blank" rel="noopener">Security Scoring and Grading for Container Images</a></li>
+</ul>
+<h3 id="Red-Hat-Quay-v3-私有容器镜像仓库部署："><a href="#Red-Hat-Quay-v3-私有容器镜像仓库部署：" class="headerlink" title="Red Hat Quay v3 私有容器镜像仓库部署："></a>Red Hat Quay v3 私有容器镜像仓库部署：</h3><ul>
+<li>Red Hat Quay 容器镜像仓库的高级特性：  <ul>
+<li>镜像安全扫描（image security scanning）  </li>
+<li>基于角色的访问（role-based access）  </li>
+<li>组织与团队管理（organization and team management）  </li>
+<li>镜像自动化构建（image build automation）  </li>
+<li>审计（auditing）  </li>
+<li>异地复制（geo-replication）  </li>
+<li>高可用（high availability）</li>
+</ul>
+</li>
+<li>该文档使用 <code>basic</code> 方式容器部署，非 <strong><code>HA</code></strong> 方式。</li>
+<li>Red Hat Quay v3 私有容器镜像仓库组件：  <ul>
+<li><code>Database</code>：MySQL 或 PostgreSQL 数据库，主要存储镜像的元数据信息，而非镜像存储。  </li>
+<li><code>Redis</code>：键值型存储，存储实时构建日志与 Quay 的向导。  </li>
+<li><code>Quay</code>：容器镜像仓库，主要运行 quay 容器服务，该服务由多个组件组成。  </li>
+<li><strong><code>Clair</code></strong>：静态容器镜像扫描工具，可识别安全隐患与修复问题（fixes）。</li>
+</ul>
+</li>
+<li>部署的容器镜像与版本：  <ul>
+<li>MySQL：<a href="http://registry.access.redhat.com/rhscl/mysql-57-rhel7:latest" target="_blank" rel="noopener">registry.access.redhat.com/rhscl/mysql-57-rhel7:latest</a>  </li>
+<li>Redis：<a href="http://registry.assess.redhat.com/rhscl/redis-32-rhel7:latest" target="_blank" rel="noopener">registry.assess.redhat.com/rhscl/redis-32-rhel7:latest</a>  </li>
+<li>Quay：quay.io/redhat/quay:v3.3.0<blockquote>
+<p><strong>注意</strong>：拉取该容器镜像前必须先使用相应账号登录 Quay，如下脚本所示。</p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li>使用 <code>docker</code> 运行各个单容器方式的部署脚本请 <a href="https://github.com/Alberthua-Perl/summary-scripts/blob/master/shell-examples/deploy-quay-registry.sh" target="_blank" rel="noopener">参考此处</a>。</li>
+<li>🚀 推荐：<br>使用 <code>podman</code> 运行单 <code>pod</code> 集成以上所有容器方式的部署脚本请 <a href="https://github.com/Alberthua-Perl/scripts-confs/blob/master/shell-examples/quay-pod-manage.sh" target="_blank" rel="noopener">参考此处</a>（未集成 Clair）。<br>该方式中 quay-aio pod 将所有容器限制在同一 <code>network namespace</code> 中，Quay 的配置、部署与访问涉及众多端口，使用单容器运行于宿主机上将生成多条 iptables <code>filter</code> 与 <code>nat</code> 表规则，而集成在单 pod 中更加便于管理。</li>
+<li>以第二种方式为例，首先执行 <code>quay-pod-manage config</code> 命令，再进行以下配置。</li>
+<li>部署前首次配置 Quay 时，需通过 Web 页面将 Quay 与 MySQL 对接，指定仓库 FQDN 及对接的 Redis 数据库地址，若使用 pod 方式部署，其地址即为 pod 所在 <code>network namespace</code> 的 ip 地址，并最终下载 quay 的 <code>.tar.gz</code> 配置文件。</li>
+<li>运行以上命令可能出现的报错（现已解决）：  <ul>
+<li>报错 1：由于 <code>/mnt/quay/config/ssl.key</code> 权限问题导致无法启动 quay-master 容器，更改其权限为 <code>0644</code> 即可。<img src="ssl-key-permission-run-quay-error.jpg" alt="ssl-key-permission-run-quay-error.jpg"></li>
+<li>报错 2：由于 <code>/mnt/quay/storage/</code> 所有者问题导致无法从客户端推送容器镜像至镜像仓库中，更改目录的所有者为 <code>1001</code> 即可，该用户为 quay-master 容器中主进程的运行用户，必须对宿主机映射的目录具有写权限。<img src="podman-push-quay-permission-denied-1001-1.jpg" alt="podman-push-quay-permission-denied-1001-1.jpg"><img src="podman-push-quay-permission-denied-1001-2.jpg" alt="podman-push-quay-permission-denied-1001-2.jpg"></li>
+</ul>
+</li>
+<li><code>Web UI</code> 中的配置过程如下所示：  <ul>
+<li>配置并生成 Quay 配置文件：    <ul>
+<li>登录 Quay 并完成认证：<img src="first-login-config-quay.png" alt="first-login-config-quay.png">    </li>
+<li>生成 Quay 配置文件：<img src="config-quay-1.png" alt="config-quay-1.png"><img src="config-quay-2.png" alt="config-quay-2.png"><img src="config-quay-3.png" alt="config-quay-3.png"><img src="config-quay-4.png" alt="config-quay-4.png"><img src="config-quay-5.png" alt="config-quay-5.png"><img src="config-quay-6.png" alt="config-quay-6.png"><img src="config-quay-7.png" alt="config-quay-7.png"><img src="config-quay-8.png" alt="config-quay-8.png"></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>下载 quay 的配置压缩文件后，可执行 <code>quay-pod-manage deploy</code> 命令完成 Quay 的部署。</li>
+<li>若部署失败可执行 <code>quay-pod-manage destroy</code> 命令销毁 pod。</li>
+<li>若运行 Quay 的 quay-master 容器状态异常，可执行 <code>quay-pod-manage recover</code> 命令恢复故障的容器。</li>
+<li>登录与验证 Quay 私有容器镜像仓库：<br>用户名：<code>admin</code> 密码：<code>1qazZSE$</code><img src="normal-login-quay.png" alt="normal-login-quay.png"></li>
+<li><p>Podman 客户端登录 Quay：<br>使用基于 <code>Docker registry API</code> 的 <code>OCI distribution API</code> 登录并访问 Quay 容器镜像仓库，Red Hat 推荐使用基于 RHEL 的容器工具，即 <code>Podman</code>、<code>Buildah</code> 与 <code>Skopeo</code> 来访问该 API。  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">$ sudo mkdir /etc/docker/certs.d/&lt;quay_registry_fqdn&gt;/</span><br><span class="line"><span class="comment"># 创建 Podman 客户端 Quay CA 证书存储目录</span></span><br><span class="line">$ sudo scp root@&lt;quay_registry_fqdn&gt;:/mnt/quay/config/ssl.cert \</span><br><span class="line">  /etc/docker/certs.d/&lt;quay_registry_fqdn&gt;/ssl.crt</span><br><span class="line"><span class="comment"># 同步 Quay CA 证书至 Podman 客户端</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># su - contsvc</span></span><br><span class="line">$ vim ~/.config/containers/registries.conf</span><br><span class="line">  unqualified-search-registries = [<span class="string">'&lt;quay_registry_fqdn&gt;'</span>]</span><br><span class="line">  <span class="comment"># 该地址形如 registry.lab.example.com</span></span><br><span class="line">  [[registry]]</span><br><span class="line">  location = <span class="string">"&lt;quay_registry_fqdn&gt;"</span></span><br><span class="line">  insecure = <span class="literal">true</span></span><br><span class="line">  blocked = <span class="literal">false</span></span><br><span class="line"><span class="comment"># 配置普通用户的 Quay 私有容器镜像仓库地址</span></span><br><span class="line"></span><br><span class="line">$ podman login &lt;quay_registry_fqdn&gt; \</span><br><span class="line">  --username admin --password 1qazZSE$ \</span><br><span class="line">  --<span class="built_in">log</span>-level=debug</span><br><span class="line"><span class="comment"># 成功登录 Quay 私有容器镜像仓库，并开启 debug 模式。</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Docker 客户端登录 Quay（可选）：<img src="docker-client-login-quay-registry.jpg" alt="docker-client-login-quay-registry.jpg"></p>
+</li>
+</ul>
+<h3 id="参考链接："><a href="#参考链接：" class="headerlink" title="参考链接："></a>参考链接：</h3><ul>
+<li><a href="https://www.cnblogs.com/ericnie/p/12233269.html" target="_blank" rel="noopener">Quay 基础版安装和部署</a></li>
+<li><a href="https://docs.projectquay.io/deploy_quay.html" target="_blank" rel="noopener">Deploy Project Quay for proof-of-concept (non-production) purposes</a></li>
+<li><a href="https://github.com/docker/docker.github.io/blob/master/registry/deploying.md#get-a-certificate" target="_blank" rel="noopener">docker.github.io/registry/deploying.md</a></li>
+<li><a href="https://github.com/docker/docker.github.io/blob/master/registry/insecure.md" target="_blank" rel="noopener">docker.github.io/registry/insecure.md</a></li>
+</ul>
+
+
+                <hr>
+
+                
+
+                <ul class="pager">
+                    
+                    
+                        <li class="next">
+                            <a href="/2022/12/05/loganalyzer-rsyslog-mysql/" data-toggle="tooltip" data-placement="top" title="部署 loganalyzer 管理集中式日志">Next Post &rarr;</a>
+                        </li>
+                    
+                </ul>
+
+                
+
+                
+
+            </div>
+    <!-- Side Catalog Container -->
+        
+
+    <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5><a href="/tags/">FEATURED TAGS</a></h5>
+                    <div class="tags">
+                       
+                          <a class="tag" href="/tags/#云原生" title="云原生">云原生</a>
+                        
+                          <a class="tag" href="/tags/#容器" title="容器">容器</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+                <hr>
+                <h5>FRIENDS</h5>
+                <ul class="list-inline">
+
+                    
+                        <li><a href="https://github.com/Alberthua-Perl" target="_blank">Alberthua</a></li>
+                    
+                        <li><a href="https://github.com/xwanli0923" target="_blank">xwanli0923</a></li>
+                    
+                </ul>
+                
+            </div>
+
+        </div>
+    </div>
+</article>
+
+
+
+
+
+
+
+
+
+    <!-- Footer -->
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://github.com/Alberthua-Perl">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; Alberthua Blog 2022 
+                    <br>
+                    Theme by <a href="http://huangxuan.me">Hux</a> 
+                    <span style="display: inline-block; margin: 0 5px;">
+                        <i class="fa fa-heart"></i>
+                    </span> 
+                    Ported by <a href="http://blog.kaijun.rocks">Kaijun</a> | 
+                    <iframe
+                        style="margin-left: 2px; margin-bottom:-5px;"
+                        frameborder="0" scrolling="0" width="91px" height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=kaijun&repo=hexo-theme-huxblog&type=star&count=true" >
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/js/jquery.min.js"></script>
+
+<!-- Bootstrap Core JavaScript -->
+<script src="/js/bootstrap.min.js"></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/js/hux-blog.min.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- 
+     Because of the native support for backtick-style fenced code blocks 
+     right within the Markdown is landed in Github Pages, 
+     From V1.6, There is no need for Highlight.js, 
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0  
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/    
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("https://alberthua-perl.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("https://cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- Side Catalog -->
+
+
+
+
+
+<!-- Image to hack wechat -->
+<img src="https://alberthua-perl.github.io/img/icon_wechat.png" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work -->
+
+</body>
+
+</html>
