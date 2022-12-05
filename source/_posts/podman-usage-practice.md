@@ -9,7 +9,7 @@ tags:
 ---
 
 ### 文档说明：
-- [上一篇](https://github.com/Alberthua-Perl/tech-docs/blob/master/%E5%AE%B9%E5%99%A8%E6%8A%80%E6%9C%AF%E5%8E%9F%E7%90%86%E4%B8%8E%E5%AE%9E%E8%B7%B5/Podman%20%E5%AE%B9%E5%99%A8%E5%8E%9F%E7%90%86%E4%B8%8E%E4%BD%BF%E7%94%A8%EF%BC%881%EF%BC%89.md) 已说明 Podman 原理与实现，该文档将继续说明 Podman 容器的使用与实践。
+- [上一篇](https://alberthua-perl.github.io/2022/12/05/podman-arch-usage/) 已说明 Podman 原理与实现，该文档将继续说明 Podman 容器的使用与实践。
 
 ### 文档目录：
 - podman 单容器使用及通信方式示例
