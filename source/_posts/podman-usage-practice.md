@@ -26,7 +26,7 @@ tags:
   🤘 部署并使用云原生轻量级对象存储 `MinIO Server`：  
   ![minio-server-cloud-native-object-storage-demo-1.jpg](minio-server-cloud-native-object-storage-demo-1.jpg)![minio-server-cloud-native-object-storage-demo-2.jpg](minio-server-cloud-native-object-storage-demo-2.jpg)以上示例将 podman 与 systemd 集成实现普通用户的 rootless 容器开机自启动。![minio-server-cloud-native-object-storage-demo-3.jpg](minio-server-cloud-native-object-storage-demo-3.jpg)关于 MinIO Server 分布式对象存储的详细内容，请 [参考官网](https://min.io/)。
 - 示例 3：  
-  🤘 请参考该文档 [部署 loganalyzer 管理集中式日志](https://github.com/Alberthua-Perl/scripts-confs/tree/master/deploy-rsyslog-viewer) 以理解多个 rootfull 容器间的通信方式（通过 `cni-podman0` 网桥与 `iptables` 互相通信）。
+  🤘 请参考该文档 [部署 loganalyzer 管理集中式日志](https://alberthua-perl.github.io/2022/12/05/loganalyzer-rsyslog-mysql/) 以理解多个 rootfull 容器间的通信方式（通过 `cni-podman0` 网桥与 `iptables` 互相通信）。
 
 ### 使用 podman-compose 实现 Gogs 轻量级代码仓库：
 - 使用 `podman-compose` 通过 `link` 链接至指定的容器建立通信。
@@ -186,7 +186,7 @@ tags:
 - 示例 1：  
   如下所示，创建名为 `nginx-docs` 的容器并同时创建名为 `docker-docs` 的 pod，也可创建其他容器添加至 pod 中，pod 中的容器共享 `network namespace`：![podman-run-pod-create.jpg](podman-run-pod-create.jpg)
 - 🤘 示例 2：
-  使用 podman 在单个 pod 中集成多容器的方法，可参考 [之前发布的文档](https://github.com/Alberthua-Perl/tech-docs/blob/master/Red%20Hat%20Quay%20v3%20registry%E5%8E%9F%E7%90%86%E4%B8%8E%E5%AE%9E%E7%8E%B0.md)，该文档中将 Quay、MySQL 与 Redis 的单容器集成在单个 pod 中，使用 pod 的 `network namespace` 方便 Quay 镜像仓库的管理。
+  使用 podman 在单个 pod 中集成多容器的方法，可参考 [之前发布的文档](https://alberthua-perl.github.io/2022/12/05/redhat-quay-v3-registry/)，该文档中将 Quay、MySQL 与 Redis 的单容器集成在单个 pod 中，使用 pod 的 `network namespace` 方便 Quay 镜像仓库的管理。
 
 ### 🚀 使用 podman kube play 实现 WordPress 的一键部署：
 - 除上述 podman pod 容器编排的方式以外，podman 也已支持类似于使用 `Kubernetes` 结构化 `yaml` 文件的方式，即可使用 `podman kube play` 创建 `Pod`、`Deployment` 与 `PersistentVolumeClaim` 等。

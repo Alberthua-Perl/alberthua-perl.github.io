@@ -32,7 +32,7 @@ tags:
 ### 实施环境：
 - OS 版本：`CentOS Linux release 7.9.2009` (Core)
 - kernel 版本：`5.13.12`
-> 📌 可使用 `elrepo repository` 升级 Linux kernel。
+> 可使用 `elrepo repository` 升级 Linux kernel。
 - Ansible 版本：`2.9.25`
 - Containerd 版本：`1.5.5`
 - Kubernetes 版本：`v1.22.1`
@@ -130,8 +130,8 @@ tags:
   9 directories, 32 files
   ```
 
-> 1. 由于 GitHub 对于上传文件的大小限制（100 MiB），`files/containerd/cri-containerd-cni-1.5.5-linux-amd64.tar.gz` 可从 [百度网盘](https://pan.baidu.com/s/1ytxDjSN0u5Tewy5rcEGWNQ) 下载，下载密码为 apdl。
-> 2. 💥 由于在 aliyun yum 源中的 kubeadm、kubectl、kubelet 与 kubernetes-cni 的 rpm 软件包可能存在无法获取的情况，因此已将软件包同项目一起上传！
+  > 1. 由于 GitHub 对于上传文件的大小限制（100 MiB），`files/containerd/cri-containerd-cni-1.5.5-linux-amd64.tar.gz` 可从 [百度网盘](https://pan.baidu.com/s/1ytxDjSN0u5Tewy5rcEGWNQ) 下载，下载密码为 apdl。
+  > 2. 💥 由于在 aliyun yum 源中的 kubeadm、kubectl、kubelet 与 kubernetes-cni 的 rpm 软件包可能存在无法获取的情况，因此已将软件包同项目一起上传！
 
 - 更改所有文件中的参数后，使用如下命令部署集群：  
   ```bash
@@ -155,11 +155,11 @@ tags:
   # 部署 Kubernetes 集群
   ```
 
-> 🤘 注意：在 kubeadm init 初始化 master 节点后，由于还未将其他 node 节点加入至集群中，此时各个 node 节点上的 `kubelet` 守护进程启动失败，可能处于 `active (auto-restarting)` 状态，查看节点 /var/log/messages 中存在大量的 `/etc/kubernetes/pki/ca.crt not found` 的报错，这是由于 kubeadm join 还未将 node 节点加入集群以及还未同步 master 节点的 CA 证书所致，待 node 节点加入集群中后 kubelet 状态将恢复 `active` 状态。
+  > 🤘 注意：在 kubeadm init 初始化 master 节点后，由于还未将其他 node 节点加入至集群中，此时各个 node 节点上的 `kubelet` 守护进程启动失败，可能处于 `active (auto-restarting)` 状态，查看节点 /var/log/messages 中存在大量的 `/etc/kubernetes/pki/ca.crt not found` 的报错，这是由于 kubeadm join 还未将 node 节点加入集群以及还未同步 master 节点的 CA 证书所致，待 node 节点加入集群中后 kubelet 状态将恢复 `active` 状态。
 
-- Kubernetes 集群部署后的 node 与 pod 状态：
-  ![kubernetes-cluster-status.jpg](kubernetes-cluster-status.jpg)
-> 🤘 注意：Kubernetes 集群中 `coredns pod` 在 Calico CNI 未完全 ready 时将处于 `pending` 状态，直至所有 calico pod 处于 Running 状态时也将处于 Running 状态。
+- Kubernetes 集群部署后的 node 与 pod 状态：![kubernetes-cluster-status.jpg](kubernetes-cluster-status.jpg)
+  
+  > 🤘 注意：Kubernetes 集群中 `coredns pod` 在 Calico CNI 未完全 ready 时将处于 `pending` 状态，直至所有 calico pod 处于 Running 状态时也将处于 Running 状态。
 
 - 停止 Kubernetes 集群：  
   ```bash
@@ -180,7 +180,7 @@ tags:
   # 第三步：部署 Quay
   ```
 
-  - 可通过 [Red Hat Quay v3 registry 原理与实现](https://github.com/Alberthua-Perl/tech-docs/blob/master/%E5%AE%B9%E5%99%A8%E6%8A%80%E6%9C%AF%E5%8E%9F%E7%90%86%E4%B8%8E%E5%AE%9E%E8%B7%B5/Red%20Hat%20Quay%20v3%20registry%20%E5%8E%9F%E7%90%86%E4%B8%8E%E5%AE%9E%E7%8E%B0.md) 文档了解如何通过 Web UI 配置 Quay。
+  - 可通过 [Red Hat Quay v3 registry 原理与实现](https://alberthua-perl.github.io/2022/12/05/redhat-quay-v3-registry/) 文档了解如何通过 Web UI 配置 Quay。
 
   - 配置 Kubernetes 集群连接 Quay 与拉取镜像：    
     - 若在集群规划时需将 Quay 与 Kubernetes 集群连接的话，需在运行 kani 命令前更改好 `files/containerd/config.toml` 文件，以保证集群部署完成后可与 Quay 对接。      

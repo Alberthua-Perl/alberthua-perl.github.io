@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head><meta name="generator" content="Hexo 3.9.0">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="让我们一起探索世界！💪 | Thumbs Up for Cloud Native 🤘">
+    <meta name="keyword" content>
+    <link rel="shortcut icon" href="/img/favicon.ico">
+
+    <title>
+        
+          Kubernetes 中部署 Rocket.Chat 与 MongoDB 数据库实时交流平台 - Alberthua 的博客 | Alberthua&#39;s Blog
+        
+    </title>
+
+    <link rel="canonical" href="https://alberthua-perl.github.io/2022/12/06/rocketchat-mongodb-on-k8s/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/hux-blog.min.css">
+
+    <!-- Pygments Highlight CSS -->
+    <link rel="stylesheet" href="/css/highlight.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="https://cdn.staticfile.org/font-awesome/4.5.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+
+    <!-- Hux Delete, sad but pending in China
+    <link href='http://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/
+    css'>
+    -->
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- ga & ba script hoook -->
+    <script></script>
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">Alberthua Blog</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+
+                    
+
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/about/">About</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/archives/">Archives</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/tags/">Tags</a>
+                        </li>
+                        
+                    
+                    
+                </ul>
+            </div>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+
+    <!-- Main Content -->
+    
+<!-- Image to hack wechat -->
+<!-- <img src="https://alberthua-perl.github.io/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="{{ site.baseurl }}/{% if page.header-img %}{{ page.header-img }}{% else %}{{ site.header-img }}{% endif %}" width="0" height="0"> -->
+
+<!-- Post Header -->
+<style type="text/css">
+    header.intro-header{
+        background-image: url('mongodb-bg-2.png')
+    }
+</style>
+<header class="intro-header" >
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                          <a class="tag" href="/tags/#Kubernetes" title="Kubernetes">Kubernetes</a>
+                        
+                          <a class="tag" href="/tags/#数据库" title="数据库">数据库</a>
+                        
+                    </div>
+                    <h1>Kubernetes 中部署 Rocket.Chat 与 MongoDB 数据库实时交流平台</h1>
+                    <h2 class="subheading">Deploy Rocket.Chat and MongoDB on Kubernetes</h2>
+                    <span class="meta">
+                        Posted by Alberthua on
+                        2022-12-06
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <h3 id="部署环境说明："><a href="#部署环境说明：" class="headerlink" title="部署环境说明："></a>部署环境说明：</h3><ul>
+<li>Kubernetes 版本：<code>v1.22.1</code></li>
+<li>Rocket.Chat 容器镜像版本：<code>docker.io/rocketchat/rocket.chat:3.18.7</code></li>
+<li>MongoDB 容器镜像版本：<code>docker.io/library/mongo:4.0</code></li>
+<li>Kubernetes NFS-Client Privisioner 容器镜像版本：<code>quay.io/external_storage/nfs-client-provisioner:latest</code></li>
+<li>👉 若无法拉取指定的容器镜像，以上镜像均可从 quay.io/user/alberthua 中拉取下载。</li>
+<li>🔗 可参考 <a href="https://github.com/Alberthua-Perl/go-kubernetes-learn-path/tree/hotfixes/rocketchat-mongo-statefulset-app" target="_blank" rel="noopener">该链接</a>，以获得项目的 GitHub 仓库。</li>
+</ul>
+<h3 id="部署方式及步骤："><a href="#部署方式及步骤：" class="headerlink" title="部署方式及步骤："></a>部署方式及步骤：</h3><ul>
+<li>💥 该应用后端的 MongoDB 集群使用 NFS 作为动态 PV 的提供者，需提前配置 NFS 服务器节点用于提供 PV。</li>
+<li>MongoDB 集群使用 <code>StatefulSet</code> 部署，而该资源需使用 <code>StorageClass</code> 实现卷声明模板（<code>volumeClaimTemplates</code>）。</li>
+<li>Kubernetes 中未集成 NFS 类型的内部调配者（<code>internal privisioner</code>），因此需使用 <code>nfs-client-provisioner</code> 将外部 NFS 调配至集群以支持 PV 动态分配。<blockquote>
+<p>🤘 StorageClass 调用链：<code>Kubernets provisioner (dynamically provisioned PV) -&gt; StorageClass -&gt; PVC -&gt; Pod</code></p>
+</blockquote>
+</li>
+<li>nfs-client-provisioner 在集群中的部署可参考 <a href="https://github.com/Alberthua-Perl/go-kubernetes-learn-path/tree/hotfixes/nfs-provisioned-storageclass" target="_blank" rel="noopener">此链接</a>。</li>
+<li>💥 注意：nfs-client-provisioner pod 与应用 pod 部署于同一命名空间（namespace）中。</li>
+<li><p>因此，该应用的部署方式如下所示：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl create namespace rocketchat-mongodb-app</span><br><span class="line">$ kubectl apply -f \</span><br><span class="line">  00-nfs-provisioned-rbac.yml 01-nfs-provisioned-deployment.yml 02-nfs-provisioned-class.yml -n rocketchat-mongodb-app</span><br><span class="line">$ kubectl apply -f 03-mongodb-internal-headless-svc.yml -n rocketchat-mongodb-app</span><br><span class="line">$ kubectl apply -f 04-mongodb-statefulset.yml -n rocketchat-mongodb-app</span><br><span class="line"><span class="comment"># 该资源创建完成后并未实现 MongoDB 的 ReplicaSet 模式集群，需登录至其中的一个节点实现集群的初始化及 mongo 节点的添加。</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl <span class="built_in">exec</span> -it rocketmongo-0 -n rocketchat-mongodb-app -- mongo</span><br><span class="line">  <span class="comment"># 进入 mongo 节点进行集群的初始化与配置</span></span><br><span class="line">  ...</span><br><span class="line">  &gt; rs.initiate()  <span class="comment"># 初始化集群</span></span><br><span class="line">  &gt; var config = rs.conf()</span><br><span class="line">  &gt; config.members[0].host=<span class="string">"rocketmongo-0.mongodb-internal:27017"</span>  </span><br><span class="line">    <span class="comment"># 通过 headless service 指向 mongo 节点，将该节点配置为 primary 节点。</span></span><br><span class="line">  &gt; rs.reconfig(config)  <span class="comment"># 刷新集群配置</span></span><br><span class="line">  &gt; rs.add(<span class="string">"rocketmongo-1.mongodb-internal:27017"</span>)</span><br><span class="line">  &gt; rs.add(<span class="string">"rocketmongo-2.mongodb-internal:27017"</span>)  <span class="comment"># 添加额外的 mongo 节点</span></span><br><span class="line">  &gt; rs.status()  <span class="comment"># 查看集群的状态</span></span><br><span class="line">  &gt; rs.isMaster()  <span class="comment"># 确认当前 mongo 节点是否为 primary 节点 </span></span><br><span class="line">  &gt; <span class="built_in">exit</span>  <span class="comment"># 退出 MongoDB Shell</span></span><br><span class="line">  ...</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl apply -f 05-rockerchat-deployment.yml -n rocketchat-mongodb-app</span><br><span class="line"><span class="comment"># 部署前端 Rocket.Chat 应用</span></span><br></pre></td></tr></table></figure>
+<p>🤘 如下所示，刷新 Rocket.Chat pod 日志可确认其与 MongoDB 集群成功连接：<img src="rocketchat-mongo-connect-successfully.png" alt="rocketchat-mongo-connect-successfully.png"></p>
+</li>
+</ul>
+<h3 id="确认应用资源与登录认证："><a href="#确认应用资源与登录认证：" class="headerlink" title="确认应用资源与登录认证："></a>确认应用资源与登录认证：</h3><ul>
+<li>该应用所涉及的资源对象如下所示：<img src="rocketchat-mongo-app-resources.png" alt="rocketchat-mongo-app-resources.png"></li>
+<li>可通过 Rocket.Chat pod 日志中的 URL 链接登录应用并注册账户使用。<img src="rocketchat-login.png" alt="rocketchat-login.png"></li>
+</ul>
+<h3 id="参考链接："><a href="#参考链接：" class="headerlink" title="参考链接："></a>参考链接：</h3><ul>
+<li><a href="https://kubernetes.io/blog/2017/01/running-mongodb-on-kubernetes-with-statefulsets/" target="_blank" rel="noopener">Running MongoDB on Kubernetes with StatefulSets</a></li>
+<li><a href="https://dev.to/jmarhee/running-rocketchat-and-mongodb-on-kubernetes-with-statefulsets-431o" target="_blank" rel="noopener">Running Rocket.Chat and MongoDB on Kubernetes with StatefulSets</a></li>
+<li><a href="https://ajorloo.medium.com/deploy-rocket-chat-server-using-kubernetes-2d6c4228853" target="_blank" rel="noopener">Deploy Rocket chat server using Kubernetes</a></li>
+</ul>
+
+
+                <hr>
+
+                
+
+                <ul class="pager">
+                    
+                        <li class="previous">
+                            <a href="/2022/12/06/skopeo-basic-usage/" data-toggle="tooltip" data-placement="top" title="Skopeo 镜像工具与容器镜像格式的原理与使用">&larr; Previous Post</a>
+                        </li>
+                    
+                    
+                        <li class="next">
+                            <a href="/2022/12/05/golang-code-server/" data-toggle="tooltip" data-placement="top" title="Code Server v4.8.3 容器镜像构建">Next Post &rarr;</a>
+                        </li>
+                    
+                </ul>
+
+                
+
+                
+
+            </div>
+    <!-- Side Catalog Container -->
+        
+
+    <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5><a href="/tags/">FEATURED TAGS</a></h5>
+                    <div class="tags">
+                       
+                          <a class="tag" href="/tags/#Kubernetes" title="Kubernetes">Kubernetes</a>
+                        
+                          <a class="tag" href="/tags/#数据库" title="数据库">数据库</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+                <hr>
+                <h5>FRIENDS</h5>
+                <ul class="list-inline">
+
+                    
+                        <li><a href="https://github.com/Alberthua-Perl" target="_blank">Alberthua</a></li>
+                    
+                        <li><a href="https://github.com/xwanli0923" target="_blank">xwanli0923</a></li>
+                    
+                        <li><a href="https://github.com/rowheel" target="_blank">rowheel</a></li>
+                    
+                </ul>
+                
+            </div>
+
+        </div>
+    </div>
+</article>
+
+
+
+
+
+
+
+
+
+    <!-- Footer -->
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://github.com/Alberthua-Perl">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; Alberthua Blog 2022 
+                    <br>
+                    Theme by <a href="http://huangxuan.me">Hux</a> 
+                    <span style="display: inline-block; margin: 0 5px;">
+                        <i class="fa fa-heart"></i>
+                    </span> 
+                    Ported by <a href="http://blog.kaijun.rocks">Kaijun</a> | 
+                    <iframe
+                        style="margin-left: 2px; margin-bottom:-5px;"
+                        frameborder="0" scrolling="0" width="91px" height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=kaijun&repo=hexo-theme-huxblog&type=star&count=true" >
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/js/jquery.min.js"></script>
+
+<!-- Bootstrap Core JavaScript -->
+<script src="/js/bootstrap.min.js"></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/js/hux-blog.min.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- 
+     Because of the native support for backtick-style fenced code blocks 
+     right within the Markdown is landed in Github Pages, 
+     From V1.6, There is no need for Highlight.js, 
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0  
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/    
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("https://alberthua-perl.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("https://cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- Side Catalog -->
+
+
+
+
+
+<!-- Image to hack wechat -->
+<img src="https://alberthua-perl.github.io/img/icon_wechat.png" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work -->
+
+</body>
+
+</html>
