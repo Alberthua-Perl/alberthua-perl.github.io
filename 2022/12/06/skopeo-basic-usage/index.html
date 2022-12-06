@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head><meta name="generator" content="Hexo 3.9.0">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="让我们一起探索世界！💪 | Thumbs Up for Cloud Native 🤘">
+    <meta name="keyword" content>
+    <link rel="shortcut icon" href="/img/favicon.ico">
+
+    <title>
+        
+          Skopeo 镜像工具与容器镜像格式的原理与使用 - Alberthua 的博客 | Alberthua&#39;s Blog
+        
+    </title>
+
+    <link rel="canonical" href="https://alberthua-perl.github.io/2022/12/06/skopeo-basic-usage/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/hux-blog.min.css">
+
+    <!-- Pygments Highlight CSS -->
+    <link rel="stylesheet" href="/css/highlight.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="https://cdn.staticfile.org/font-awesome/4.5.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+
+    <!-- Hux Delete, sad but pending in China
+    <link href='http://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/
+    css'>
+    -->
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- ga & ba script hoook -->
+    <script></script>
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">Alberthua Blog</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+
+                    
+
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/about/">About</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/archives/">Archives</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/tags/">Tags</a>
+                        </li>
+                        
+                    
+                    
+                </ul>
+            </div>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+
+    <!-- Main Content -->
+    
+<!-- Image to hack wechat -->
+<!-- <img src="https://alberthua-perl.github.io/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="{{ site.baseurl }}/{% if page.header-img %}{{ page.header-img }}{% else %}{{ site.header-img }}{% endif %}" width="0" height="0"> -->
+
+<!-- Post Header -->
+<style type="text/css">
+    header.intro-header{
+        background-image: url('skopeo-bg.jpg')
+    }
+</style>
+<header class="intro-header" >
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                          <a class="tag" href="/tags/#云原生" title="云原生">云原生</a>
+                        
+                          <a class="tag" href="/tags/#容器" title="容器">容器</a>
+                        
+                    </div>
+                    <h1>Skopeo 镜像工具与容器镜像格式的原理与使用</h1>
+                    <h2 class="subheading">Skopeo Basic Usage and Container Image Format</h2>
+                    <span class="meta">
+                        Posted by Alberthua on
+                        2022-12-06
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <h3 id="文档说明："><a href="#文档说明：" class="headerlink" title="文档说明："></a>文档说明：</h3><ul>
+<li>OS 版本：Ubuntu 20.04.3 LTS (Focal Fossa)</li>
+<li>skopeo 版本：1.3.0-1</li>
+</ul>
+<h3 id="文档目录："><a href="#文档目录：" class="headerlink" title="文档目录："></a>文档目录：</h3><ul>
+<li>Skopeo 工具概要</li>
+<li>使用 Skopeo 认证容器镜像仓库</li>
+<li>Skopeo 支持的容器镜像存储方式</li>
+<li>使用 Skopeo 操作容器镜像</li>
+<li>容器镜像格式比较</li>
+<li>参考链接</li>
+</ul>
+<h3 id="Skopeo-工具概要："><a href="#Skopeo-工具概要：" class="headerlink" title="Skopeo 工具概要："></a>Skopeo 工具概要：</h3><ul>
+<li>常用的容器镜像操作工具可使用 docker、podman 命令，但 docker 命令行工具需要使用守护进程与 root 用户权限，在一些场景下使用该工具同步容器镜像的效率是较低的，而 podman 命令虽然不使用守护进程，但是其同步镜像效率依然不高。</li>
+<li>skopeo 与 buildah 命令可专门用于容器镜像的操作，其中 skopeo 命令更加纯粹地用于容器镜像的搬运与容器镜像格式的转换，效率较其他工具更高，但是不具有容器镜像构建的能力。</li>
+<li>Podman 更加侧重于容器的生命周期管理，同时具备部分容器镜像管理与构建功能，而 Buildah 支持分别使用命令行从头构建容器镜像与 <code>Dockerfile</code> 或 <code>Containerfile</code> 的构建方式，同时兼容 Docker 与 OCI 镜像格式。<blockquote>
+<p>👉 关于 Podman 更加详细的信息可参考之前写的 <a href="https://alberthua-perl.github.io/2022/12/05/podman-arch-usage/">Podman 容器原理与使用（1）</a>与 <a href="https://alberthua-perl.github.io/2022/12/05/podman-usage-practice/">Podman 容器原理与使用（2）</a>。</p>
+</blockquote>
+</li>
+<li>Skopeo 安装方法可参考 <a href="https://github.com/containers/skopeo/blob/main/install.md" target="_blank" rel="noopener">该 GitHub 链接</a>，此处不再赘述。</li>
+<li>skopeo 命令的帮助信息：  <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">$ skopeo --<span class="built_in">help</span></span><br><span class="line">Various operations with container images and container image registries</span><br><span class="line"></span><br><span class="line">Usage:</span><br><span class="line">  skopeo [<span class="built_in">command</span>]</span><br><span class="line"></span><br><span class="line">Available Commands:</span><br><span class="line">  copy                                          Copy an IMAGE-NAME from one location to another</span><br><span class="line">  delete                                        Delete image IMAGE-NAME</span><br><span class="line">  <span class="built_in">help</span>                                          Help about any <span class="built_in">command</span></span><br><span class="line">  inspect                                       Inspect image IMAGE-NAME</span><br><span class="line">  list-tags                                     List tags <span class="keyword">in</span> the transport/repository specified by the REPOSITORY-NAME</span><br><span class="line">  login                                         Login to a container registry</span><br><span class="line">  <span class="built_in">logout</span>                                        Logout of a container registry</span><br><span class="line">  manifest-digest                               Compute a manifest digest of a file</span><br><span class="line">  standalone-sign                               Create a signature using <span class="built_in">local</span> files</span><br><span class="line">  standalone-verify                             Verify a signature using <span class="built_in">local</span> files</span><br><span class="line">  sync                                          Synchronize one or more images from one location to another</span><br><span class="line"></span><br><span class="line">Flags:</span><br><span class="line">      --<span class="built_in">command</span>-timeout duration   timeout <span class="keyword">for</span> the <span class="built_in">command</span> execution</span><br><span class="line">      --debug                      <span class="built_in">enable</span> debug output</span><br><span class="line">  -h, --<span class="built_in">help</span>                       <span class="built_in">help</span> <span class="keyword">for</span> skopeo</span><br><span class="line">      --insecure-policy            run the tool without any policy check</span><br><span class="line">      --override-arch ARCH         use ARCH instead of the architecture of the machine <span class="keyword">for</span> choosing images</span><br><span class="line">      --override-os OS             use OS instead of the running OS <span class="keyword">for</span> choosing images</span><br><span class="line">      --override-variant VARIANT   use VARIANT instead of the running architecture variant <span class="keyword">for</span> choosing images</span><br><span class="line">      --policy string              Path to a trust policy file</span><br><span class="line">      --registries.d DIR           use registry configuration files <span class="keyword">in</span> DIR (e.g. <span class="keyword">for</span> container signature storage)</span><br><span class="line">      --tmpdir string              directory used to store temporary files</span><br><span class="line">  -v, --version                    Version <span class="keyword">for</span> Skopeo</span><br><span class="line"></span><br><span class="line">Use <span class="string">"skopeo [command] --help"</span> <span class="keyword">for</span> more information about a <span class="built_in">command</span>.</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<h3 id="使用-Skopeo-认证容器镜像仓库："><a href="#使用-Skopeo-认证容器镜像仓库：" class="headerlink" title="使用 Skopeo 认证容器镜像仓库："></a>使用 Skopeo 认证容器镜像仓库：</h3><ul>
+<li>Red Hat 支持 <code>skopeo</code> 命令来管理容器镜像仓库中的镜像。</li>
+<li>Skopeo 可分别用于操作公共（public）与私有（private）容器镜像，对于私有容器镜像需要对容器镜像仓库进行认证。</li>
+<li>Skopeo 与 Buildah 可使用 Podman 保存的认证 <code>token</code>（位于 <code>/run/user/&lt;UID&gt;/containers/auth.json</code>），但是无法执行交互式的登录密码输入，因此，若在 skopeo 命令行中指定明文登录密码可在 history 命令历史记录中查看到，存在一定的安全风险，可使用如下以变量形式传递密码的方法优化：<img src="skopeo-inspect-creds.jpg" alt="skopeo-inspect-creds.jpg"><blockquote>
+<p>若未使用 Podman 作为容器运行时，而依然使用 Docker 容器运行时的话，其认证 token 依然可被 Skopeo 使用与认证，该认证 token 位于 <code>$HOME/.docker/config.json</code>。</p>
+</blockquote>
+</li>
+<li>Skopeo 的众多子命令支持容器镜像仓库的认证，可分别通过用户名与密码及认证的 token 文件实现认证，如下所示：  <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">### 示例 ###</span></span><br><span class="line">$ skopeo copy --src-creds &lt;username&gt;:&lt;password&gt; \</span><br><span class="line">  docker://registry.redhat.io/rhscl/postgresql-96-rhel7:latest \</span><br><span class="line">  oci:postgresql-96-rhel7-latest</span><br><span class="line"></span><br><span class="line">$ skopeo copy --src-authfile /run/user/&lt;UID&gt;/containers/auth.json \</span><br><span class="line">  docker://registry.redhat.io/rhscl/postgresql-96-rhel7:latest \</span><br><span class="line">  oci:postgresql-96-rhel7-latest</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<h3 id="Skopeo-支持的容器镜像存储方式："><a href="#Skopeo-支持的容器镜像存储方式：" class="headerlink" title="Skopeo 支持的容器镜像存储方式："></a>Skopeo 支持的容器镜像存储方式：</h3><ul>
+<li>Skopeo 使用 <code>URI</code> 来表示容器镜像的位置，使用 URI 模式（schema）来表示容器镜像格式和registry APIs。</li>
+<li>常见的 URI 模式：  <ul>
+<li><code>oci</code>：    <ul>
+<li>表示存储在本地的 OCI 格式目录中的容器镜像    </li>
+<li>该镜像兼容开放容器镜像层规范（<code>Open Container Image Layout Specification</code>）  </li>
+</ul>
+</li>
+<li><code>oci-archive</code>：    <ul>
+<li>表示 OCI 镜像格式封装的容器镜像的 tar 归档    </li>
+<li>该镜像兼容开放容器镜像层规范  </li>
+</ul>
+</li>
+<li><code>containers-storage</code>：    <ul>
+<li>表示存储于本地容器运行时缓存中的容器镜像    </li>
+<li>后端容器引擎兼容 Podman、CRI-O 与 Buildah  </li>
+</ul>
+</li>
+<li><code>docker-daemon</code>：    <ul>
+<li>表示存储于本地 Docker 容器运行时缓存中的容器镜像  </li>
+</ul>
+</li>
+<li><code>docker-archive</code>：    <ul>
+<li>表示 Docker 镜像格式封装的容器镜像的 tar 归档  </li>
+</ul>
+</li>
+<li><code>dir</code>：    <ul>
+<li>本地存储容器镜像的目录，其中以单个文件的方式包含镜像的 <code>manifest</code>、镜像层 tar 归档与各镜像层签名（<code>digest</code>）。  </li>
+</ul>
+</li>
+<li><code>docker://</code>：    <ul>
+<li>表示存储于容器镜像仓库中的远程容器镜像</li>
+<li>可通过 <code>Docker Registry HTTP API V2</code> 操作仓库中的容器镜像</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>同一容器镜像可以根据不同的场景使用以上不同的方式保存。<blockquote>
+<p>👉 关于 Skopeo 更为详细的信息可参考 <code>man skopeo</code> 手册。</p>
+</blockquote>
+</li>
+</ul>
+<h3 id="使用-Skopeo-操作容器镜像："><a href="#使用-Skopeo-操作容器镜像：" class="headerlink" title="使用 Skopeo 操作容器镜像："></a>使用 Skopeo 操作容器镜像：</h3><ul>
+<li>Skopeo 不使用容器运行时，并且普通用户可直接使用，比 Podman 使用 tag、pull 与 push 等子命令时更加的高效。</li>
+<li>🐳 若使用 docker 或 podman 命令将容器镜像仓库中的镜像保存于本地存储，需分别使用 docker pull|save 与 podman pull|save 命令将本地镜像缓存中的镜像保存于 tar 归档，无法从容器镜像仓库直接保存于文件或目录中，下文中提及的 <code>skopeo copy</code> 或 <code>sync</code> 子命令可实现该功能，无需存在本地镜像缓存。</li>
+<li><p>🚀 Skopeo 操纵镜像层的方式：  </p>
+<ul>
+<li>出于效率问题，Skopeo 不读取与发送已存在于目标仓库的镜像层，它首先读取源镜像的 manifest，再确定哪些层已存在于目标仓库，然后仅仅拷贝缺失的镜像层。  </li>
+<li>若拷贝来自构建于同一父镜像的镜像，Skopeo 不拷贝多个来自于父镜像的相同镜像层。  </li>
+<li><p>Skopeo 可在容器镜像仓库之间拷贝镜像而不在本地容器存储中保存镜像层缓存，若源仓库与目标仓库需要认证，则需要使用 <code>--src-creds</code> 与 <code>--dest-creds</code> 选项指定认证用户与明文密码，并且 Skopeo 支持在目标仓库实现镜像 <code>tag</code>。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">$ skopeo copy \</span><br><span class="line">  --src-creds=&lt;username&gt;:&lt;password&gt; \</span><br><span class="line">  --dest-creds=&lt;username&gt;:&lt;password&gt; \</span><br><span class="line">  docker://&lt;uri_for_src_registry&gt;/&lt;user_or_org&gt;/&lt;repository&gt;:[tag] \</span><br><span class="line">  docker://&lt;uri_for_dest_registry&gt;/&lt;user_or_org&gt;/&lt;repository&gt;:[tag]</span><br><span class="line"><span class="comment"># 分别指定源仓库与目标仓库的认证用户与明文密码，并在仓库间拷贝容器镜像。</span></span><br></pre></td></tr></table></figure>
+<p><img src="skopeo-copy-dest-creds.jpg" alt="skopeo-copy-dest-creds.jpg"></p>
+</li>
+</ul>
+</li>
+<li><p><code>skopeo delete</code>：删除容器镜像的镜像 tag  </p>
+<ul>
+<li><p>该命令可删除容器镜像仓库中指定镜像的 tag<br>若删除公共镜像可直接执行无需用户认证，而删除私有容器镜像需使用 <code>--creds</code> 选项或 <code>--authfile</code> 选项进行认证后删除，如下所示：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ skopeo delete --creds &lt;username&gt;:&lt;password&gt; \</span><br><span class="line">  docker://&lt;uri_for_registry&gt;/&lt;user_or_org&gt;/&lt;repository&gt;:[tag]</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>💥 指定镜像 <code>tag</code> 时将删除特定 tag，即使将最后一个 tag 删除后也不删除整个镜像仓库，若需要删除整个镜像仓库需登录指定仓库。此处为 Quay.io 为例，在 <code>Web 控制台</code> 上删除，如下所示：<img src="skopeo-delete-1.jpg" alt="skopeo-delete-1.jpg"><img src="skopeo-delete-2.jpg" alt="skopeo-delete-2.jpg"> </p>
+</li>
+<li>💥 该命令也可删除本地容器运行时缓存中的镜像 tag，但需注意，若具有多个不同 tag 的容器镜像（实际为同一容器镜像），只具有同一个 image ID（该值来自于镜像的 manifest 中 <code>.config.digest</code>），那么在执行删除时即使指定了镜像的 tag，也会将其他具有相同 image ID 的镜像一并删除，该行为与容器镜像仓库中相区别！</li>
+</ul>
+</li>
+<li><p><code>skopeo copy</code>：dir 模式示例</p>
+<blockquote>
+<p>💥 Skopeo 可将容器镜像仓库中镜像拷贝至本地镜像目录（该目录无需提前创建），该目录中的镜像封装格式保留原始容器镜像仓库中的镜像格式。</p>
+</blockquote>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ skopeo copy \</span><br><span class="line">  docker://&lt;uri_for_registry&gt;/&lt;user_or_org&gt;/&lt;repository&gt;:[tag] \</span><br><span class="line">  dir:&lt;dir_of_container_image&gt;</span><br></pre></td></tr></table></figure>
+<p><img src="skopeo-copy-docker-format-image-dir.jpg" alt="skopeo-copy-docker-format-image-dir.jpg">除了使用 docker load 或 podman load 直接将容器镜像的 tar 归档导入本地镜像缓存中，也可使用已经保存至本地的目录以 dir 或 oci 模式存在的容器镜像，如下所示：<img src="podman-load-dir-from-skopeo-copy.jpg" alt="podman-load-dir-from-skopeo-copy.jpg"></p>
+<p>也可以使用 Skopeo 将本地镜像目录拷贝至容器镜像仓库，用以替代 docker push 或 podman push 的功能：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ skopeo copy \</span><br><span class="line">  dir:&lt;dir_of_container_image&gt; \</span><br><span class="line">  docker://&lt;uri_for_registry&gt;/&lt;user_or_org&gt;/&lt;repository&gt;:[tag]</span><br></pre></td></tr></table></figure>
+<p><img src="skopeo-copy-dir-2.jpg" alt="skopeo-copy-dir-2.jpg"></p>
+</li>
+<li><p><code>skopeo copy</code>：oci 模式示例<br>Skopeo 可将容器镜像仓库中镜像拷贝至本地 <code>OCI</code> 格式目录中以存储镜像：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ skopeo copy \</span><br><span class="line">  docker://&lt;uri_for_registry&gt;/&lt;user_or_org&gt;/&lt;repository&gt;:[tag] \</span><br><span class="line">  oci:&lt;dir_of_container_image&gt;</span><br></pre></td></tr></table></figure>
+<p><img src="skopeo-copy-oci-1.jpg" alt="skopeo-copy-oci-1.jpg">其中拷贝至本地的 OCI 格式目录结构如下所示，包含了容器镜像的各层（layer）。<br><img src="skopeo-copy-oci-2.jpg" alt="skopeo-copy-oci-2.jpg">也可使用本地 OCI 格式目录将镜像拷贝至容器镜像仓库中。</p>
+</li>
+<li><p><code>skopeo copy</code>：oci-archive 模式示例  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">$ skopeo copy \</span><br><span class="line">  docker://&lt;uri_for_registry&gt;/&lt;user_or_org&gt;/&lt;repository&gt;:[tag] \</span><br><span class="line">  oci-archive:&lt;oci_contaier_image_name&gt;.tar</span><br><span class="line"><span class="comment"># 将容器镜像仓库中镜像封装为 tar 归档的 OCI 镜像格式的镜像</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p><code>skopeo copy</code>：containers-storage 模式示例  </p>
+<blockquote>
+<p>💥 该模式只能在以 Podman 或 CRI-O 为容器运行时的情况下使用，若使用 Docker 容器运行时将报错！</p>
+</blockquote>
+<p><img src="skopeo-copy-docker-daemon.jpg" alt="skopeo-copy-docker-daemon.jpg">  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">$ skopeo copy \</span><br><span class="line">  docker://&lt;uri_for_registry&gt;/&lt;user_or_org&gt;/&lt;repository&gt;:[tag] \</span><br><span class="line">  containers-storage:&lt;uri_for_registry&gt;/&lt;user_or_org&gt;/&lt;repository&gt;:[tag]</span><br><span class="line"><span class="comment"># 将容器镜像仓库中的镜像存储于本地镜像缓存</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p><code>skopeo copy</code>：docker-archive 模式示例  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">$ skopeo copy \</span><br><span class="line">  docker://&lt;uri_for_registry&gt;/&lt;user_or_org&gt;/&lt;repository&gt;:[tag] \</span><br><span class="line">  docker-archive:&lt;docker_contaier_image_name&gt;.tar</span><br><span class="line"><span class="comment"># 将容器镜像仓库中镜像封装为 tar 归档的 Docker 镜像格式的镜像</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p><code>skopeo copy</code>：docker-daemon 模式示例</p>
+<blockquote>
+<p>💥 该模式在使用 Docker 容器运行时的情况下使用。</p>
+</blockquote>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">$ skopeo copy \</span><br><span class="line">  docker://&lt;uri_for_registry&gt;/&lt;user_or_org&gt;/&lt;repository&gt;:[tag] \</span><br><span class="line">  docker-daemon:&lt;uri_for_registry&gt;/&lt;user_or_org&gt;/&lt;repository&gt;:[tag]</span><br><span class="line"><span class="comment"># 将容器镜像仓库中的镜像存储于本地镜像缓存</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>🚀 Skopeo 对容器镜像格式的转换：  </p>
+<ul>
+<li>使用 skopeo copy 命令将容器镜像仓库中镜像拷贝至本地目录或本地 tar 归档存储时，可分别以 Docker 镜像格式或 OCI 镜像格式保存。  </li>
+<li>因此，skopeo copy 命令可同时完成容器镜像的下载与镜像格式的转换。  </li>
+<li>如下所示：<img src="skopeo-copy-transform-image-format.jpg" alt="skopeo-copy-transform-image-format.jpg"></li>
+</ul>
+</li>
+<li><code>skopeo sync</code>：  <ul>
+<li>sync 子命令将容器镜像从 src 源同步至 dest 目的地，功能与 copy 子命令类似。  </li>
+<li>skopeo sync 命令可指定的 src 与 dest 类型如下所示：<img src="skopeo-sync-help.jpg" alt="skopeo-sync-help.jpg"></li>
+<li>👉 示例 1：<br>将远程容器镜像仓库中的镜像同步至本地目录，本地存储容器镜像的目录无需创建。<img src="skopeo-sync-demo.jpg" alt="skopeo-sync-demo.jpg"></li>
+<li>👉 示例 2：<br>skopeo 命令分别使用两个容器镜像仓库的 token 认证文件将容器镜像同步至另一个仓库中，并且目标仓库只需指定仓库 <code>URI</code> 即可，将自动生成对应的镜像名称与标签。<img src="skopeo-sync-between-registry.jpg" alt="skopeo-sync-between-registry.jpg"></li>
+<li>也可使用 skopeo sync 命令将本地 dir 模式存储的容器镜像同步至远程容器镜像仓库中。</li>
+</ul>
+</li>
+<li><p><code>skopeo inspect</code> 与 <code>skopeo manifest-digest</code>：</p>
+<ul>
+<li>该命令用于查看详细的容器镜像层信息（image manifest）或容器镜像的配置信息（image config）。  </li>
+<li>🐳 image manifest 包含各镜像层的 <code>mediaType</code>、<code>size</code>、<code>digest</code>，而 image config 包含镜像的其他详细信息。  </li>
+<li><p>👉 示例 1：Docker 镜像格式的容器镜像目录<br>如上所述，使用 <code>dir</code> 模式存储的容器镜像位于 nexus3-3.37.3 目录中，可直接使用 <code>jq</code> 命令查看该镜像的 image manifest 与 image config：    </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">### 示例（以下内容为部分输出） ###</span></span><br><span class="line">$ jq <span class="string">'.'</span> nexus3-3.37.3/manifest.json</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">"schemaVersion"</span>: 2,</span><br><span class="line">  <span class="string">"mediaType"</span>: <span class="string">"application/vnd.docker.distribution.manifest.v2+json"</span>,</span><br><span class="line">  <span class="string">"config"</span>: &#123;</span><br><span class="line">    <span class="string">"mediaType"</span>: <span class="string">"application/vnd.docker.container.image.v1+json"</span>,</span><br><span class="line">    <span class="string">"size"</span>: 10193,</span><br><span class="line">    <span class="string">"digest"</span>: <span class="string">"sha256:1e1d45f195b19d03ec1833561dca6f5c63f9453413247c323c24f2fbcc34bcdd"</span></span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">"layers"</span>: [</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="string">"mediaType"</span>: <span class="string">"application/vnd.docker.image.rootfs.diff.tar.gzip"</span>,</span><br><span class="line">      <span class="string">"size"</span>: 81522888,</span><br><span class="line">      <span class="string">"digest"</span>: <span class="string">"sha256:8dfe9326f733b815c486432e93e0a97f03e90e7cc35def9511cd1efa7f917f56"</span></span><br><span class="line">    &#125;,</span><br><span class="line">    ...</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment"># 根据 dir 目录中的 manifest 查看容器镜像及各镜像层信息</span></span><br><span class="line"></span><br><span class="line">$ jq <span class="string">'.'</span> nexus3-3.37.3/1e1d45f195b19d03ec1833561dca6f5c63f9453413247c323c24f2fbcc34bcdd</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">"architecture"</span>: <span class="string">"amd64"</span>,</span><br><span class="line">  <span class="string">"config"</span>: &#123;</span><br><span class="line">    <span class="string">"Hostname"</span>: <span class="string">"bb4a731bd39e"</span>,</span><br><span class="line">    <span class="string">"Domainname"</span>: <span class="string">""</span>,</span><br><span class="line">    <span class="string">"User"</span>: <span class="string">"nexus"</span>,</span><br><span class="line">    ...</span><br><span class="line">    <span class="string">"ExposedPorts"</span>: &#123;</span><br><span class="line">      <span class="string">"8081/tcp"</span>: &#123;&#125;</span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="string">"Tty"</span>: <span class="literal">false</span>,</span><br><span class="line">    <span class="string">"OpenStdin"</span>: <span class="literal">false</span>,</span><br><span class="line">    <span class="string">"StdinOnce"</span>: <span class="literal">false</span>,</span><br><span class="line">    <span class="string">"Env"</span>: [</span><br><span class="line">      <span class="string">"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"</span>,</span><br><span class="line">      <span class="string">"container=oci"</span>,</span><br><span class="line">      <span class="string">"SONATYPE_DIR=/opt/sonatype"</span>,</span><br><span class="line">      <span class="string">"NEXUS_HOME=/opt/sonatype/nexus"</span>,</span><br><span class="line">      <span class="string">"NEXUS_DATA=/nexus-data"</span>,</span><br><span class="line">      <span class="string">"NEXUS_CONTEXT="</span>,</span><br><span class="line">      <span class="string">"SONATYPE_WORK=/opt/sonatype/sonatype-work"</span>,</span><br><span class="line">      <span class="string">"DOCKER_TYPE=3x-docker"</span>,</span><br><span class="line">      <span class="string">"INSTALL4J_ADD_VM_PARAMS=-Xms2703m -Xmx2703m -XX:MaxDirectMemorySize=2703m -Djava.util.prefs.userRoot=/nexus-data/javaprefs"</span></span><br><span class="line">    ],</span><br><span class="line">    <span class="string">"Cmd"</span>: [</span><br><span class="line">      <span class="string">"sh"</span>,</span><br><span class="line">      <span class="string">"-c"</span>,</span><br><span class="line">      <span class="string">"<span class="variable">$&#123;SONATYPE_DIR&#125;</span>/start-nexus-repository-manager.sh"</span></span><br><span class="line">    ],</span><br><span class="line">    <span class="string">"Image"</span>: <span class="string">"sha256:bb968737b5d0d7420e5af7c5524cddc16bd2b43a47f8277e00b1461342d40ba5"</span>,</span><br><span class="line">    <span class="string">"Volumes"</span>: &#123;</span><br><span class="line">      <span class="string">"/nexus-data"</span>: &#123;&#125;</span><br><span class="line">    &#125;,</span><br><span class="line">  ...</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">"created"</span>: <span class="string">"2022-03-02T23:52:49.682473465Z"</span>,</span><br><span class="line">  <span class="string">"docker_version"</span>: <span class="string">"20.10.9"</span>,</span><br><span class="line">  <span class="string">"history"</span>: [</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="string">"created"</span>: <span class="string">"2022-02-25T17:39:29.754401796Z"</span>,</span><br><span class="line">      <span class="string">"comment"</span>: <span class="string">"Imported from -"</span></span><br><span class="line">    &#125;,</span><br><span class="line">    ...</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="string">"created"</span>: <span class="string">"2022-03-02T23:52:49.682473465Z"</span>,</span><br><span class="line">      <span class="string">"created_by"</span>: <span class="string">"/bin/sh -c #(nop)  CMD [\"sh\" \"-c\" \"<span class="variable">$&#123;SONATYPE_DIR&#125;</span>/start-nexus-repository-manager.sh\"]"</span>,</span><br><span class="line">      <span class="string">"empty_layer"</span>: <span class="literal">true</span></span><br><span class="line">    &#125;</span><br><span class="line">  ],</span><br><span class="line">  <span class="string">"os"</span>: <span class="string">"linux"</span>,</span><br><span class="line">  <span class="string">"rootfs"</span>: &#123;</span><br><span class="line">    <span class="string">"type"</span>: <span class="string">"layers"</span>,</span><br><span class="line">    <span class="string">"diff_ids"</span>: [</span><br><span class="line">      <span class="string">"sha256:7699752e6ed63eef234d2736d4e37159a433e18e06cd617e254299f324f41797"</span>,</span><br><span class="line">      <span class="string">"sha256:c8013a2772b6673d9b750b6407d4ac4f525a47bb2a5b5bf09ba9bf8e10aea3fc"</span>,</span><br><span class="line">      <span class="string">"sha256:5a745ebef99f4893aac7c56a26e54f9c6cdc08b02748e0580b1a31d70be0a280"</span>,</span><br><span class="line">      <span class="string">"sha256:8d12fc82bf58bf5f7958577a148cc05899f0c19e4654376f5e01d3af46eb0c15"</span>,</span><br><span class="line">      <span class="string">"sha256:d17e45a4f748d13d0501b9e1bca5be387e13efa8ce98147a85c904a348764f3b"</span></span><br><span class="line">    ]</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment"># 根据容器镜像目录中的 config 文件查看具体的 image config</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">$ skopeo inspect dir:nexus3-3.37.3</span><br><span class="line"><span class="comment"># 查看 nexus3 容器镜像的概要信息</span></span><br><span class="line"></span><br><span class="line">$ skopeo inspect --raw dir:nexus3-3.37.3</span><br><span class="line"><span class="comment"># 查看 nexus3 容器镜像的 manifest 信息，返回的内容与镜像的 manifest.json 一致。</span></span><br><span class="line"></span><br><span class="line">$ skopeo inspect --config dir:nexus3-3.37.3</span><br><span class="line"><span class="comment"># 查看 nexus3 容器镜像的 config 信息，返回的内容与直接查看镜像的配置信息一致。</span></span><br><span class="line"></span><br><span class="line">$ skopeo manifest-digest nexus3-3.37.3/manifest.json</span><br><span class="line"><span class="comment"># 查看 nexus3 容器镜像的 manifest.json 文件的 digest 值</span></span><br></pre></td></tr></table></figure>
+<p>关于容器镜像目录中 <code>image manifest</code> 与其 <code>digest</code> 的关系，如下所示：<img src="skopeo-docker-image-format-digest-1.jpg" alt="skopeo-docker-image-format-digest-1.jpg"><img src="skopeo-docker-image-format-digest-2.jpg" alt="skopeo-docker-image-format-digest-2.jpg"></p>
+</li>
+<li>👉 示例 2：OCI 镜像格式的容器镜像目录<br>关于容器镜像目录中 <code>image manifest</code> 与其 <code>digest</code> 的关系，如下所示：<img src="skopeo-oci-image-format-digest.jpg" alt="skopeo-oci-image-format-digest.jpg"></li>
+</ul>
+</li>
+</ul>
+<h3 id="🐳-容器镜像格式比较："><a href="#🐳-容器镜像格式比较：" class="headerlink" title="🐳 容器镜像格式比较："></a>🐳 容器镜像格式比较：</h3><ul>
+<li>对于不同的容器镜像格式，其目录的组织结构存在差异，但彼此间又有联系。</li>
+<li>目前采用的容器镜像格式：  <ul>
+<li><code>Docker image format</code>：Docker 镜像格式  </li>
+<li><code>OCI image format</code>：OCI 镜像格式</li>
+</ul>
+</li>
+<li>OCI image format 继承于 Docker image format，因此，可运行 OCI image format 镜像的容器运行时也可运行 Docker image format 的镜像。</li>
+<li><code>OCI</code>（Open Container Initiative，开放容器标准）发展概述：<ul>
+<li>为了推进容器化技术的工业标准化，2015 年 6 月在 <code>DockerCon</code> 上 Linux 基金会与 Google、华为、惠普、IBM、Docker、Red Hat、VMware 等公司共同宣布成立开放容器项目（OCP），后更名为开放容器标准（OCI）。  </li>
+<li>它的主要目标是建立容器格式和运行时的工业开放通用标准。  </li>
+<li>为了支持 OCI 容器运行时标准的推进，Docker 公司起草了镜像格式和运行时规范的草案，并将 Docker 项目的相关实现捐献给了社区，OCI 作为容器运行时的基础实现，现在项目名为 <code>runc</code>。</li>
+</ul>
+</li>
+<li>🤘 发展至今，OCI 制定的主要标准：  <ul>
+<li><code>runtime-spec</code>：定义容器运行时规范  </li>
+<li><code>image-spec</code>：定义容器镜像格式规范  </li>
+<li><code>distribution-spec</code>：定义容器镜像的分发规范</li>
+</ul>
+</li>
+<li><p>OCI image format 目录说明：  </p>
+<ul>
+<li><p>如下所示，以 <code>debian</code> 镜像为例：    </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">$ tree debian-bullseye-20211115-oci</span><br><span class="line">debian-bullseye-20211115-oci</span><br><span class="line">├── blobs</span><br><span class="line">│   └── sha256</span><br><span class="line">│       ├── 468a9be7b68d9b0baf252c3496a6db0a406ba558946d3cfee8f0d2a3be1ec42b</span><br><span class="line">│       ├── 5f2f9939c1839f4fee492777a220cfe1e80cd25008df90af6c2b3b2c30e239c6</span><br><span class="line">│       └── 61ccfad6b52ee974d14b8e3c998d862e7dedd59fa8e0023e6620b213ea6da1ad</span><br><span class="line">├── index.json</span><br><span class="line">└── oci-layout</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>oci-layout：OCI image 的镜像布局规范，此处使用 <code>OCI 1.0.0</code> 版本。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">$ jq <span class="string">'.'</span> debian-bullseye-20211115-oci/oci-layout</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">"imageLayoutVersion"</span>: <span class="string">"1.0.0"</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>index.json：    </p>
+<ul>
+<li><code>index.json</code> 文件中的 <code>manifests</code> 字段类似于 Docker image 中的 <code>manifest.json</code> 作为 OCI image 的顶级配置, 也是镜像的一个入口配置。  </li>
+<li><p>该文件实际指向 <code>blobs/sha256/468a9be7b68d9b0baf252c3496a6db0a406ba558946d3cfee8f0d2a3be1ec42b</code> ，即真正的 OCI image manifest 文件。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">$ jq <span class="string">'.'</span> debian-bullseye-20211115-oci/index.json</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">"schemaVersion"</span>: 2,</span><br><span class="line">  <span class="string">"manifests"</span>: [</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="string">"mediaType"</span>: <span class="string">"application/vnd.oci.image.manifest.v1+json"</span>,</span><br><span class="line">      <span class="string">"digest"</span>: <span class="string">"sha256:468a9be7b68d9b0baf252c3496a6db0a406ba558946d3cfee8f0d2a3be1ec42b"</span>,</span><br><span class="line">      <span class="string">"size"</span>: 349</span><br><span class="line">    &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>从该文件的 <code>mediaType</code> 可以看出容器镜像格式已发生的变化：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">$ jq <span class="string">'.mediaType'</span> debian-bullseye-20211115-docker/manifest.json</span><br><span class="line"><span class="string">"application/vnd.docker.distribution.manifest.v2+json"</span></span><br><span class="line"><span class="comment"># Docker image format 封装</span></span><br><span class="line"></span><br><span class="line">$ jq <span class="string">'.manifests[0].mediaType'</span> debian-bullseye-20211115-oci/index.json</span><br><span class="line"><span class="string">"application/vnd.oci.image.manifest.v1+json"</span></span><br><span class="line"><span class="comment"># OCI image format 封装</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">$ jq <span class="string">'.'</span> debian-bullseye-20211115-oci/blobs/sha256/468a9be7b68d9b0baf252c3496a6db0a406ba558946d3cfee8f0d2a3be1ec42b</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">"schemaVersion"</span>: 2,</span><br><span class="line">  <span class="string">"config"</span>: &#123;</span><br><span class="line">    <span class="string">"mediaType"</span>: <span class="string">"application/vnd.oci.image.config.v1+json"</span>,</span><br><span class="line">    <span class="string">"digest"</span>: <span class="string">"sha256:61ccfad6b52ee974d14b8e3c998d862e7dedd59fa8e0023e6620b213ea6da1ad"</span>,</span><br><span class="line">    <span class="string">"size"</span>: 579</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">"layers"</span>: [</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="string">"mediaType"</span>: <span class="string">"application/vnd.oci.image.layer.v1.tar+gzip"</span>,</span><br><span class="line">      <span class="string">"digest"</span>: <span class="string">"sha256:5f2f9939c1839f4fee492777a220cfe1e80cd25008df90af6c2b3b2c30e239c6"</span>,</span><br><span class="line">      <span class="string">"size"</span>: 56889206</span><br><span class="line">    &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>以上文件为 OCI image manifest 文件，其中包含 image config 的信息与各镜像层 Layers 的信息，每层 layer 使用 <code>tar+gzip</code> 的方式进行压缩。</p>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Docker image format 与 OCI image format 的联系与区别：  <ul>
+<li>最主要的区别：目录结构不完全相同，配置信息尤其是 <code>mediaType</code> 的规范不同。  </li>
+<li>联系：OCI image 的规范是由 Docker image 的规范修改而来，所以类似它们的 blob 的组织形式大致相同，配置文件中很多的参数也相似。  </li>
+<li>另外，可以使用 skopeo 工具很方便地将 Docker image 转换为 OCI image。</li>
+</ul>
+</li>
+</ul>
+<h3 id="参考链接："><a href="#参考链接：" class="headerlink" title="参考链接："></a>参考链接：</h3><ul>
+<li><a href="https://github.com/containers/skopeo" target="_blank" rel="noopener">GitHub Doc - Skopeo</a></li>
+<li><a href="https://mp.weixin.qq.com/s/J2b-PQD5GkN5KEmGB2WAeA" target="_blank" rel="noopener">镜像搬运工具 Skopeo 使用</a></li>
+<li><a href="https://mp.weixin.qq.com/s/8wAv87DkJjE6fVEEmoQ60Q" target="_blank" rel="noopener">OCI 与容器镜像构建</a></li>
+<li><a href="https://github.com/opencontainers/image-spec" target="_blank" rel="noopener">GitHub Doc - opencontainers/image-spec</a></li>
+<li><a href="https://github.com/opencontainers/image-spec/blob/main/media-types.md" target="_blank" rel="noopener">GitHub Doc - OCI Image Media Types</a></li>
+<li><a href="https://github.com/opencontainers/runtime-spec/blob/main/spec.md" target="_blank" rel="noopener">GitHub Doc - Open Container Initiative Runtime Specification</a></li>
+</ul>
+
+
+                <hr>
+
+                
+
+                <ul class="pager">
+                    
+                    
+                        <li class="next">
+                            <a href="/2022/12/06/rocketchat-mongodb-on-k8s/" data-toggle="tooltip" data-placement="top" title="Kubernetes 中部署 Rocket.Chat 与 MongoDB 数据库实时交流平台">Next Post &rarr;</a>
+                        </li>
+                    
+                </ul>
+
+                
+
+                
+
+            </div>
+    <!-- Side Catalog Container -->
+        
+
+    <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5><a href="/tags/">FEATURED TAGS</a></h5>
+                    <div class="tags">
+                       
+                          <a class="tag" href="/tags/#云原生" title="云原生">云原生</a>
+                        
+                          <a class="tag" href="/tags/#容器" title="容器">容器</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+                <hr>
+                <h5>FRIENDS</h5>
+                <ul class="list-inline">
+
+                    
+                        <li><a href="https://github.com/Alberthua-Perl" target="_blank">Alberthua</a></li>
+                    
+                        <li><a href="https://github.com/xwanli0923" target="_blank">xwanli0923</a></li>
+                    
+                        <li><a href="https://github.com/rowheel" target="_blank">rowheel</a></li>
+                    
+                </ul>
+                
+            </div>
+
+        </div>
+    </div>
+</article>
+
+
+
+
+
+
+
+
+
+    <!-- Footer -->
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://github.com/Alberthua-Perl">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; Alberthua Blog 2022 
+                    <br>
+                    Theme by <a href="http://huangxuan.me">Hux</a> 
+                    <span style="display: inline-block; margin: 0 5px;">
+                        <i class="fa fa-heart"></i>
+                    </span> 
+                    Ported by <a href="http://blog.kaijun.rocks">Kaijun</a> | 
+                    <iframe
+                        style="margin-left: 2px; margin-bottom:-5px;"
+                        frameborder="0" scrolling="0" width="91px" height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=kaijun&repo=hexo-theme-huxblog&type=star&count=true" >
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/js/jquery.min.js"></script>
+
+<!-- Bootstrap Core JavaScript -->
+<script src="/js/bootstrap.min.js"></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/js/hux-blog.min.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- 
+     Because of the native support for backtick-style fenced code blocks 
+     right within the Markdown is landed in Github Pages, 
+     From V1.6, There is no need for Highlight.js, 
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0  
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/    
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("https://alberthua-perl.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("https://cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- Side Catalog -->
+
+
+
+
+
+<!-- Image to hack wechat -->
+<img src="https://alberthua-perl.github.io/img/icon_wechat.png" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work -->
+
+</body>
+
+</html>

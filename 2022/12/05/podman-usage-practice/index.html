@@ -207,7 +207,7 @@
 <h3 id="podman-单容器使用及通信方式示例："><a href="#podman-单容器使用及通信方式示例：" class="headerlink" title="podman 单容器使用及通信方式示例："></a>podman 单容器使用及通信方式示例：</h3><ul>
 <li>示例 1：<br>👉 使用 podman 命令登录 <code>Quay</code> 公共容器镜像仓库并推送镜像：<img src="podman-push-quay.jpg" alt="podman-push-quay.jpg">👉 搜索并拉取 Red Hat 容器镜像仓库中的镜像列表：<img src="podman-pull-image.jpg" alt="podman-pull-image.jpg"></li>
 <li>示例 2：<br>🤘 部署并使用云原生轻量级对象存储 <code>MinIO Server</code>：<br><img src="minio-server-cloud-native-object-storage-demo-1.jpg" alt="minio-server-cloud-native-object-storage-demo-1.jpg"><img src="minio-server-cloud-native-object-storage-demo-2.jpg" alt="minio-server-cloud-native-object-storage-demo-2.jpg">以上示例将 podman 与 systemd 集成实现普通用户的 rootless 容器开机自启动。<img src="minio-server-cloud-native-object-storage-demo-3.jpg" alt="minio-server-cloud-native-object-storage-demo-3.jpg">关于 MinIO Server 分布式对象存储的详细内容，请 <a href="https://min.io/" target="_blank" rel="noopener">参考官网</a>。</li>
-<li>示例 3：<br>🤘 请参考该文档 <a href="https://github.com/Alberthua-Perl/scripts-confs/tree/master/deploy-rsyslog-viewer" target="_blank" rel="noopener">部署 loganalyzer 管理集中式日志</a> 以理解多个 rootfull 容器间的通信方式（通过 <code>cni-podman0</code> 网桥与 <code>iptables</code> 互相通信）。</li>
+<li>示例 3：<br>🤘 请参考该文档 <a href="https://alberthua-perl.github.io/2022/12/05/loganalyzer-rsyslog-mysql/">部署 loganalyzer 管理集中式日志</a> 以理解多个 rootfull 容器间的通信方式（通过 <code>cni-podman0</code> 网桥与 <code>iptables</code> 互相通信）。</li>
 </ul>
 <h3 id="使用-podman-compose-实现-Gogs-轻量级代码仓库："><a href="#使用-podman-compose-实现-Gogs-轻量级代码仓库：" class="headerlink" title="使用 podman-compose 实现 Gogs 轻量级代码仓库："></a>使用 podman-compose 实现 Gogs 轻量级代码仓库：</h3><ul>
 <li>使用 <code>podman-compose</code> 通过 <code>link</code> 链接至指定的容器建立通信。</li>
@@ -278,7 +278,7 @@
 </li>
 <li><p>示例 1：<br>如下所示，创建名为 <code>nginx-docs</code> 的容器并同时创建名为 <code>docker-docs</code> 的 pod，也可创建其他容器添加至 pod 中，pod 中的容器共享 <code>network namespace</code>：<img src="podman-run-pod-create.jpg" alt="podman-run-pod-create.jpg"></p>
 </li>
-<li>🤘 示例 2：<br>使用 podman 在单个 pod 中集成多容器的方法，可参考 <a href="https://github.com/Alberthua-Perl/tech-docs/blob/master/Red%20Hat%20Quay%20v3%20registry%E5%8E%9F%E7%90%86%E4%B8%8E%E5%AE%9E%E7%8E%B0.md" target="_blank" rel="noopener">之前发布的文档</a>，该文档中将 Quay、MySQL 与 Redis 的单容器集成在单个 pod 中，使用 pod 的 <code>network namespace</code> 方便 Quay 镜像仓库的管理。</li>
+<li>🤘 示例 2：<br>使用 podman 在单个 pod 中集成多容器的方法，可参考 <a href="https://alberthua-perl.github.io/2022/12/05/redhat-quay-v3-registry/">之前发布的文档</a>，该文档中将 Quay、MySQL 与 Redis 的单容器集成在单个 pod 中，使用 pod 的 <code>network namespace</code> 方便 Quay 镜像仓库的管理。</li>
 </ul>
 <h3 id="🚀-使用-podman-kube-play-实现-WordPress-的一键部署："><a href="#🚀-使用-podman-kube-play-实现-WordPress-的一键部署：" class="headerlink" title="🚀 使用 podman kube play 实现 WordPress 的一键部署："></a>🚀 使用 podman kube play 实现 WordPress 的一键部署：</h3><ul>
 <li>除上述 podman pod 容器编排的方式以外，podman 也已支持类似于使用 <code>Kubernetes</code> 结构化 <code>yaml</code> 文件的方式，即可使用 <code>podman kube play</code> 创建 <code>Pod</code>、<code>Deployment</code> 与 <code>PersistentVolumeClaim</code> 等。</li>
@@ -391,6 +391,8 @@
                         <li><a href="https://github.com/Alberthua-Perl" target="_blank">Alberthua</a></li>
                     
                         <li><a href="https://github.com/xwanli0923" target="_blank">xwanli0923</a></li>
+                    
+                        <li><a href="https://github.com/rowheel" target="_blank">rowheel</a></li>
                     
                 </ul>
                 

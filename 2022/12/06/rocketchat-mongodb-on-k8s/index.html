@@ -13,11 +13,11 @@
 
     <title>
         
-          部署 loganalyzer 管理集中式日志 - Alberthua 的博客 | Alberthua&#39;s Blog
+          Kubernetes 中部署 Rocket.Chat 与 MongoDB 数据库实时交流平台 - Alberthua 的博客 | Alberthua&#39;s Blog
         
     </title>
 
-    <link rel="canonical" href="https://alberthua-perl.github.io/2022/12/05/loganalyzer-rsyslog-mysql/">
+    <link rel="canonical" href="https://alberthua-perl.github.io/2022/12/06/rocketchat-mongodb-on-k8s/">
 
     <!-- Bootstrap Core CSS -->
     <link rel="stylesheet" href="/css/bootstrap.min.css">
@@ -155,7 +155,7 @@
 <!-- Post Header -->
 <style type="text/css">
     header.intro-header{
-        background-image: url('hello-world-dark-bg.jpg')
+        background-image: url('mongodb-bg-2.png')
     }
 </style>
 <header class="intro-header" >
@@ -165,16 +165,16 @@
                 <div class="post-heading">
                     <div class="tags">
                         
-                          <a class="tag" href="/tags/#Linux" title="Linux">Linux</a>
+                          <a class="tag" href="/tags/#Kubernetes" title="Kubernetes">Kubernetes</a>
                         
-                          <a class="tag" href="/tags/#容器" title="容器">容器</a>
+                          <a class="tag" href="/tags/#数据库" title="数据库">数据库</a>
                         
                     </div>
-                    <h1>部署 loganalyzer 管理集中式日志</h1>
-                    <h2 class="subheading">Deploy loganalyzer to Manage Centralized Logs</h2>
+                    <h1>Kubernetes 中部署 Rocket.Chat 与 MongoDB 数据库实时交流平台</h1>
+                    <h2 class="subheading">Deploy Rocket.Chat and MongoDB on Kubernetes</h2>
                     <span class="meta">
                         Posted by Alberthua on
-                        2022-12-05
+                        2022-12-06
                     </span>
                 </div>
             </div>
@@ -193,38 +193,38 @@
                 col-md-10 col-md-offset-1
                 post-container">
 
-                <h3 id="文档说明："><a href="#文档说明：" class="headerlink" title="文档说明："></a>文档说明：</h3><ul>
-<li>OS 版本：Red Hat Enterprise Linux 8.2 (Ootpa)</li>
-<li>Podman 版本：podman-1.9.3-2.module+el8.2.1+6867+366c07d6.x86_64</li>
-<li>loganalyzer 版本：loganalyzer-4.1.11.tar.gz</li>
-<li>该示例中使用 yum 安装的软件包若未指定特定版本均为系统自带软件包。</li>
+                <h3 id="部署环境说明："><a href="#部署环境说明：" class="headerlink" title="部署环境说明："></a>部署环境说明：</h3><ul>
+<li>Kubernetes 版本：<code>v1.22.1</code></li>
+<li>Rocket.Chat 容器镜像版本：<code>docker.io/rocketchat/rocket.chat:3.18.7</code></li>
+<li>MongoDB 容器镜像版本：<code>docker.io/library/mongo:4.0</code></li>
+<li>Kubernetes NFS-Client Privisioner 容器镜像版本：<code>quay.io/external_storage/nfs-client-provisioner:latest</code></li>
+<li>👉 若无法拉取指定的容器镜像，以上镜像均可从 quay.io/user/alberthua 中拉取下载。</li>
+<li>🔗 可参考 <a href="https://github.com/Alberthua-Perl/go-kubernetes-learn-path/tree/hotfixes/rocketchat-mongo-statefulset-app" target="_blank" rel="noopener">该链接</a>，以获得项目的 GitHub 仓库。</li>
 </ul>
-<h3 id="架构示例："><a href="#架构示例：" class="headerlink" title="架构示例："></a>架构示例：</h3><p><img src="loganalyzer-mysql-rsyslogserver.jpg" alt="loganalyzer-mysql-rsyslogserver.jpg"><br>如图所示，<code>rsyslog-server</code> 服务端收集来自 <code>rsyslog-client</code> 客户端发送的指定系统日志数据，并且 Apache httpd server 与 MySQL 数据库均以容器的方式一同部署于服务端。</p>
-<h3 id="loganalyzer-与-MySQL-的容器化部署要点："><a href="#loganalyzer-与-MySQL-的容器化部署要点：" class="headerlink" title="loganalyzer 与 MySQL 的容器化部署要点："></a>loganalyzer 与 MySQL 的容器化部署要点：</h3><ul>
-<li>部署用 <code>Shell</code> 脚本可参考 <a href="https://github.com/Alberthua-Perl/scripts-confs/blob/master/deploy-rsyslog-viewer/deploy-rsyslog-viewer.sh" target="_blank" rel="noopener">此链接</a>。</li>
-<li>部署用节点：<ul>
-<li>serverb.lab.example.com (RH294v8.0 course)：2 vCPU，4GiB RAM</li>
-<li>firewalld 服务已禁用   </li>
-<li>SELinux 为 enforcing 模式   </li>
+<h3 id="部署方式及步骤："><a href="#部署方式及步骤：" class="headerlink" title="部署方式及步骤："></a>部署方式及步骤：</h3><ul>
+<li>💥 该应用后端的 MongoDB 集群使用 NFS 作为动态 PV 的提供者，需提前配置 NFS 服务器节点用于提供 PV。</li>
+<li>MongoDB 集群使用 <code>StatefulSet</code> 部署，而该资源需使用 <code>StorageClass</code> 实现卷声明模板（<code>volumeClaimTemplates</code>）。</li>
+<li>Kubernetes 中未集成 NFS 类型的内部调配者（<code>internal privisioner</code>），因此需使用 <code>nfs-client-provisioner</code> 将外部 NFS 调配至集群以支持 PV 动态分配。<blockquote>
+<p>🤘 StorageClass 调用链：<code>Kubernets provisioner (dynamically provisioned PV) -&gt; StorageClass -&gt; PVC -&gt; Pod</code></p>
+</blockquote>
+</li>
+<li>nfs-client-provisioner 在集群中的部署可参考 <a href="https://github.com/Alberthua-Perl/go-kubernetes-learn-path/tree/hotfixes/nfs-provisioned-storageclass" target="_blank" rel="noopener">此链接</a>。</li>
+<li>💥 注意：nfs-client-provisioner pod 与应用 pod 部署于同一命名空间（namespace）中。</li>
+<li><p>因此，该应用的部署方式如下所示：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl create namespace rocketchat-mongodb-app</span><br><span class="line">$ kubectl apply -f \</span><br><span class="line">  00-nfs-provisioned-rbac.yml 01-nfs-provisioned-deployment.yml 02-nfs-provisioned-class.yml -n rocketchat-mongodb-app</span><br><span class="line">$ kubectl apply -f 03-mongodb-internal-headless-svc.yml -n rocketchat-mongodb-app</span><br><span class="line">$ kubectl apply -f 04-mongodb-statefulset.yml -n rocketchat-mongodb-app</span><br><span class="line"><span class="comment"># 该资源创建完成后并未实现 MongoDB 的 ReplicaSet 模式集群，需登录至其中的一个节点实现集群的初始化及 mongo 节点的添加。</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl <span class="built_in">exec</span> -it rocketmongo-0 -n rocketchat-mongodb-app -- mongo</span><br><span class="line">  <span class="comment"># 进入 mongo 节点进行集群的初始化与配置</span></span><br><span class="line">  ...</span><br><span class="line">  &gt; rs.initiate()  <span class="comment"># 初始化集群</span></span><br><span class="line">  &gt; var config = rs.conf()</span><br><span class="line">  &gt; config.members[0].host=<span class="string">"rocketmongo-0.mongodb-internal:27017"</span>  </span><br><span class="line">    <span class="comment"># 通过 headless service 指向 mongo 节点，将该节点配置为 primary 节点。</span></span><br><span class="line">  &gt; rs.reconfig(config)  <span class="comment"># 刷新集群配置</span></span><br><span class="line">  &gt; rs.add(<span class="string">"rocketmongo-1.mongodb-internal:27017"</span>)</span><br><span class="line">  &gt; rs.add(<span class="string">"rocketmongo-2.mongodb-internal:27017"</span>)  <span class="comment"># 添加额外的 mongo 节点</span></span><br><span class="line">  &gt; rs.status()  <span class="comment"># 查看集群的状态</span></span><br><span class="line">  &gt; rs.isMaster()  <span class="comment"># 确认当前 mongo 节点是否为 primary 节点 </span></span><br><span class="line">  &gt; <span class="built_in">exit</span>  <span class="comment"># 退出 MongoDB Shell</span></span><br><span class="line">  ...</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl apply -f 05-rockerchat-deployment.yml -n rocketchat-mongodb-app</span><br><span class="line"><span class="comment"># 部署前端 Rocket.Chat 应用</span></span><br></pre></td></tr></table></figure>
+<p>🤘 如下所示，刷新 Rocket.Chat pod 日志可确认其与 MongoDB 集群成功连接：<img src="rocketchat-mongo-connect-successfully.png" alt="rocketchat-mongo-connect-successfully.png"></p>
+</li>
 </ul>
-</li>
-<li>此次使用 <strong><code>podman runtime</code></strong> 容器运行时运行所有容器。</li>
-<li>该部署环境中已预配置 <code>Red Hat Quay 3.3.0</code>，并且已将 <code>mysql-57-rhel7:latest</code> 上传至该容器镜像仓库中的 <code>rhscl organization</code> 中。</li>
-<li>将容器镜像上传至 Quay 中，需提前创建相应的 organizaion，否则将上传失败报错！<br><img src="quay-push-error-1.jpg" alt="quay-push-error-1..jpg"><img src="quay-push-error-2.jpg" alt="quay-push-error-2.jpg"></li>
-<li>务必关闭并禁用节点 <code>firewalld</code> 服务，该服务与 <code>iptables NAT</code> 规则冲突，在启用的情况下将无法实现容器的端口映射，iptables NAT 规则无法建立！</li>
-<li><p>由于 loganalyzer 容器与 MySQL 容器均位于同一节点上，且容器通过 <code>CNI bridge</code> (cni-podman0) 连接，因此 loganalyzer 连接 MySQL 时应使用节点的 IP 地址，但 MySQL 对指定用户的授权语句应使用 <code>CNI Gateway</code> 的 IP 地址，否则在前端 Web 上无法建立连接。</p>
- <figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">grant</span> <span class="keyword">all</span> <span class="keyword">on</span> Syslog.* <span class="keyword">to</span> <span class="string">'$&#123;SYSLOG_USER&#125;'</span>@<span class="string">'$&#123;CNI_GATEWAY&#125;'</span> <span class="keyword">identified</span> <span class="keyword">by</span> <span class="string">'$&#123;SYSLOG_PASS&#125;'</span>;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>loganalyzer 容器镜像基于 <code>Apache httpd server</code> 构建，可参考 <a href="https://github.com/Alberthua-Perl/Dockerfile-examples/tree/master/loganalyzer-viewer" target="_blank" rel="noopener">此链接</a>。</p>
-</li>
-<li>loganalyzer 项目基于 PHP，可作为 MySQL 数据库检索日志数据的 Web 前端。</li>
-<li>MySQL 容器使用持久化存储（卷映射）时，由于使用 Red Hat 官方镜像，启动容器时不使用 root 用户运行 mysql 守护进程，而使用 <strong>UID 27</strong> (mysql) 运行，需设置宿主机映射目录的所有者与所属组，不更改将无法运行容器。    </li>
-<li>容器中报错日志如下所示：<img src="mysql-container-run-error.jpg" alt="mysql-container-run-error.jpg"></li>
-<li>loganalyzer 容器与 MySQL 容器部署成功且正常运行后，需访问 loganalyzer 容器所在节点以完成两者的对接，如下所示：<img src="loganalyzer-web-1.jpg" alt="loganalyzer-web-1.jpg"><img src="loganalyzer-web-2.jpg" alt="loganalyzer-web-2.jpg"><img src="loganalyzer-web-3.jpg" alt="loganalyzer-web-3.jpg"><img src="loganalyzer-web-4.jpg" alt="loganalyzer-web-4.jpg"><img src="loganalyzer-web-5.jpg" alt="loganalyzer-web-5.jpg"><img src="loganalyzer-web-6.jpg" alt="loganalyzer-web-6.jpg"><img src="loganalyzer-web-7.jpg" alt="loganalyzer-web-7.jpg"><img src="loganalyzer-web-8.jpg" alt="loganalyzer-web-8.jpg"><img src="loganalyzer-web-9.jpg" alt="loganalyzer-web-9.jpg"><img src="loganalyzer-web-10.jpg" alt="loganalyzer-web-10.jpg"></li>
+<h3 id="确认应用资源与登录认证："><a href="#确认应用资源与登录认证：" class="headerlink" title="确认应用资源与登录认证："></a>确认应用资源与登录认证：</h3><ul>
+<li>该应用所涉及的资源对象如下所示：<img src="rocketchat-mongo-app-resources.png" alt="rocketchat-mongo-app-resources.png"></li>
+<li>可通过 Rocket.Chat pod 日志中的 URL 链接登录应用并注册账户使用。<img src="rocketchat-login.png" alt="rocketchat-login.png"></li>
 </ul>
-<h3 id="loganalyzer-的常规部署要点："><a href="#loganalyzer-的常规部署要点：" class="headerlink" title="loganalyzer 的常规部署要点："></a>loganalyzer 的常规部署要点：</h3><ul>
-<li>loganalyzer 也可直接使用解压的压缩包（PHP 源码）实现安装，方法位于部署脚本的最后注释部分。</li>
-<li>SELinux 为 <code>enforcing</code> 模式时，loganalyzer 无法与 MySQL 容器连接，需打开 PHP 与 MySQL的网络连接布尔值以支持。<img src="selinux-php-mysql-connection.jpg" alt="selinux-php-mysql-connection.jpg"></li>
+<h3 id="参考链接："><a href="#参考链接：" class="headerlink" title="参考链接："></a>参考链接：</h3><ul>
+<li><a href="https://kubernetes.io/blog/2017/01/running-mongodb-on-kubernetes-with-statefulsets/" target="_blank" rel="noopener">Running MongoDB on Kubernetes with StatefulSets</a></li>
+<li><a href="https://dev.to/jmarhee/running-rocketchat-and-mongodb-on-kubernetes-with-statefulsets-431o" target="_blank" rel="noopener">Running Rocket.Chat and MongoDB on Kubernetes with StatefulSets</a></li>
+<li><a href="https://ajorloo.medium.com/deploy-rocket-chat-server-using-kubernetes-2d6c4228853" target="_blank" rel="noopener">Deploy Rocket chat server using Kubernetes</a></li>
 </ul>
 
 
@@ -235,12 +235,12 @@
                 <ul class="pager">
                     
                         <li class="previous">
-                            <a href="/2022/12/05/redhat-quay-v3-registry/" data-toggle="tooltip" data-placement="top" title="Red Hat Quay v3 registry 原理与实现">&larr; Previous Post</a>
+                            <a href="/2022/12/06/skopeo-basic-usage/" data-toggle="tooltip" data-placement="top" title="Skopeo 镜像工具与容器镜像格式的原理与使用">&larr; Previous Post</a>
                         </li>
                     
                     
                         <li class="next">
-                            <a href="/2022/12/05/podman-usage-practice/" data-toggle="tooltip" data-placement="top" title="Podman 容器原理与使用（2）">Next Post &rarr;</a>
+                            <a href="/2022/12/05/golang-code-server/" data-toggle="tooltip" data-placement="top" title="Code Server v4.8.3 容器镜像构建">Next Post &rarr;</a>
                         </li>
                     
                 </ul>
@@ -267,9 +267,9 @@
                     <h5><a href="/tags/">FEATURED TAGS</a></h5>
                     <div class="tags">
                        
-                          <a class="tag" href="/tags/#Linux" title="Linux">Linux</a>
+                          <a class="tag" href="/tags/#Kubernetes" title="Kubernetes">Kubernetes</a>
                         
-                          <a class="tag" href="/tags/#容器" title="容器">容器</a>
+                          <a class="tag" href="/tags/#数据库" title="数据库">数据库</a>
                         
                     </div>
                 </section>
