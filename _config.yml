@@ -92,6 +92,10 @@ friends: [
     {
         title: "rowheel",
         href: "https://github.com/rowheel"
+    },
+    {
+        title: "万里博客",
+        herf: "https://xwanli0923.github.io"
     }
 ]
 

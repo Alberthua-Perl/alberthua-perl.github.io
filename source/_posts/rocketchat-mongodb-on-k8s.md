@@ -15,6 +15,7 @@ tags:
 - Kubernetes NFS-Client Privisioner 容器镜像版本：
   `quay.io/external_storage/nfs-client-provisioner:latest`
 - 👉 若拉取失败，以上镜像均可从 https://quay.io/user/alberthua 中拉取下载。
+- 🔗 点击 [链接](https://github.com/Alberthua-Perl/go-kubernetes-learn-path/tree/hotfixes/rocketchat-mongo-statefulset-app)，以获得部署用的相关文件。
 
 ### 部署方式及步骤：
 - 💥 该应用后端的 MongoDB 集群使用 `NFS` 作为动态 PV 的提供者，需提前配置 NFS 服务器节点用于提供 PV（见下文）。
