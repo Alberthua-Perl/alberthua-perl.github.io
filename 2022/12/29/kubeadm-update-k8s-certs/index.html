@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head><meta name="generator" content="Hexo 3.9.0">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="让我们一起探索世界！💪 | Thumbs Up for Cloud Native 🤘">
+    <meta name="keyword" content>
+    <link rel="shortcut icon" href="/img/favicon.ico">
+
+    <title>
+        
+          kubeadm 更新 Kubernetes 集群到期证书 - Alberthua 的博客 | Alberthua&#39;s Blog
+        
+    </title>
+
+    <link rel="canonical" href="https://alberthua-perl.github.io/2022/12/29/kubeadm-update-k8s-certs/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/hux-blog.min.css">
+
+    <!-- Pygments Highlight CSS -->
+    <link rel="stylesheet" href="/css/highlight.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="https://cdn.staticfile.org/font-awesome/4.5.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+
+    <!-- Hux Delete, sad but pending in China
+    <link href='http://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/
+    css'>
+    -->
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- ga & ba script hoook -->
+    <script></script>
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">Alberthua Blog</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+
+                    
+
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/about/">关于我</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/archives/">归档</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/tags/">分类</a>
+                        </li>
+                        
+                    
+                    
+                </ul>
+            </div>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+
+    <!-- Main Content -->
+    
+<!-- Image to hack wechat -->
+<!-- <img src="https://alberthua-perl.github.io/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="{{ site.baseurl }}/{% if page.header-img %}{{ page.header-img }}{% else %}{{ site.header-img }}{% endif %}" width="0" height="0"> -->
+
+<!-- Post Header -->
+<style type="text/css">
+    header.intro-header{
+        background-image: url('kubeadm-certs-bg.jpg')
+    }
+</style>
+<header class="intro-header" >
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                          <a class="tag" href="/tags/#云原生" title="云原生">云原生</a>
+                        
+                          <a class="tag" href="/tags/#Kubernetes" title="Kubernetes">Kubernetes</a>
+                        
+                    </div>
+                    <h1>kubeadm 更新 Kubernetes 集群到期证书</h1>
+                    <h2 class="subheading">kubeadm Update Kubernetes Expired Certifications</h2>
+                    <span class="meta">
+                        Posted by Alberthua on
+                        2022-12-29
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <h3 id="环境说明："><a href="#环境说明：" class="headerlink" title="环境说明："></a>环境说明：</h3><ul>
+<li>Kubernetes 版本：<code>v1.22.1</code></li>
+<li>kubeadm 版本：<code>v1.22.1</code></li>
+</ul>
+<h3 id="处理方法："><a href="#处理方法：" class="headerlink" title="处理方法："></a>处理方法：</h3><ul>
+<li>kubeadm 更新集群证书从 Kubernetes <code>v1.15</code> 进入 <code>stable</code> 状态，可在 GA 环境中使用。</li>
+<li>默认情况下，由 kubeadm 为集群生成的所有证书在 1 年后到期。</li>
+<li>更新（重新签发）集群证书需根据其部署方式而定，通过二进制部署的集群需手动更新集群证书，而通过 kubeadm 部署的集群可使用 kubeadm 更新证书，也可重新编译 kubeadm 用以生成自定义有效期的证书。</li>
+<li>👉 笔者环境中直接使用 kubeadm 更新证书。</li>
+<li><p>集群证书更新方式，步骤如下：  </p>
+<ul>
+<li><p>检查集群证书有效期（通常于 <code>master</code> 节点执行）：    </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ kubeadm certs check-expiration</span><br><span class="line">$ openssl x509 -noout -<span class="keyword">in</span> /etc/kubernetes/pki/apiserver.crt -dates</span><br><span class="line"><span class="comment"># 也可通过以上命令单独查看证书是否过期</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>集群 master 节点上的 <code>/etc/kubernetes/pki/*</code> 的证书在更新之前应继续保留在节点上不可删除，删除后将导致集群异常无法恢复。  </p>
+</li>
+<li>🏷 kubeadm 更新集群 master 节点上的证书，而 worker 节点上 <code>kubelet</code> 证书默认自动轮换更新，无需关心证书到期问题。<code>kube-apiserver</code> 访问 kubelet 时，并不校验 kubelet 服务端证书，kubeadm 也并不提供更新 kubelet 服务端证书的办法。  </li>
+<li><p>更新延期集群证书 1 年有效期：    </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line">$ kubeadm certs renew all --config ./kubeadm-conf.yml</span><br><span class="line">  W1213 21:45:40.125346   15197 strict.go:55] error unmarshaling configuration schema.GroupVersionKind&#123;Group:<span class="string">"kubelet.config.k8s.io"</span>, Version:<span class="string">"v1beta1"</span>, Kind:<span class="string">"KubeletConfiguration"</span>&#125;: error converting YAML to JSON: yaml: unmarshal errors:</span><br><span class="line">    line 27: key <span class="string">"cgroupDriver"</span> already <span class="built_in">set</span> <span class="keyword">in</span> map</span><br><span class="line">  certificate embedded <span class="keyword">in</span> the kubeconfig file <span class="keyword">for</span> the admin to use and <span class="keyword">for</span> kubeadm itself renewed</span><br><span class="line">  certificate <span class="keyword">for</span> serving the Kubernetes API renewed</span><br><span class="line">  certificate the apiserver uses to access etcd renewed</span><br><span class="line">  certificate <span class="keyword">for</span> the API server to connect to kubelet renewed</span><br><span class="line">  certificate embedded <span class="keyword">in</span> the kubeconfig file <span class="keyword">for</span> the controller manager to use renewed</span><br><span class="line">  certificate <span class="keyword">for</span> liveness probes to healthcheck etcd renewed</span><br><span class="line">  certificate <span class="keyword">for</span> etcd nodes to communicate with each other renewed</span><br><span class="line">  certificate <span class="keyword">for</span> serving etcd renewed</span><br><span class="line">  certificate <span class="keyword">for</span> the front proxy client renewed</span><br><span class="line">  certificate embedded <span class="keyword">in</span> the kubeconfig file <span class="keyword">for</span> the scheduler manager to use renewed</span><br><span class="line"></span><br><span class="line">  Done renewing certificates. You must restart the kube-apiserver, kube-controller-manager, kube-scheduler and etcd, so that they can use the new certificates.</span><br><span class="line"><span class="comment"># 根据集群部署时使用的 kubeadm-conf.yml 配置文件更新所有集群证书</span></span><br><span class="line"></span><br><span class="line">$ tree -D /etc/kubernetes/pki</span><br><span class="line">  /etc/kubernetes/pki</span><br><span class="line">  ├── [Dec 13 21:45]  apiserver.crt</span><br><span class="line">  ├── [Dec 13 21:45]  apiserver-etcd-client.crt</span><br><span class="line">  ├── [Dec 13 21:45]  apiserver-etcd-client.key</span><br><span class="line">  ├── [Dec 13 21:45]  apiserver.key</span><br><span class="line">  ├── [Dec 13 21:45]  apiserver-kubelet-client.crt</span><br><span class="line">  ├── [Dec 13 21:45]  apiserver-kubelet-client.key</span><br><span class="line">  ├── [Dec 25  2021]  ca.crt</span><br><span class="line">  ├── [Dec 25  2021]  ca.key</span><br><span class="line">  ├── [Dec 25  2021]  etcd</span><br><span class="line">  │   ├── [Dec 25  2021]  ca.crt</span><br><span class="line">  │   ├── [Dec 25  2021]  ca.key</span><br><span class="line">  │   ├── [Dec 13 21:45]  healthcheck-client.crt</span><br><span class="line">  │   ├── [Dec 13 21:45]  healthcheck-client.key</span><br><span class="line">  │   ├── [Dec 13 21:45]  peer.crt</span><br><span class="line">  │   ├── [Dec 13 21:45]  peer.key</span><br><span class="line">  │   ├── [Dec 13 21:45]  server.crt</span><br><span class="line">  │   └── [Dec 13 21:45]  server.key</span><br><span class="line">  ├── [Dec 25  2021]  front-proxy-ca.crt</span><br><span class="line">  ├── [Dec 25  2021]  front-proxy-ca.key</span><br><span class="line">  ├── [Dec 13 21:45]  front-proxy-client.crt</span><br><span class="line">  ├── [Dec 13 21:45]  front-proxy-client.key</span><br><span class="line">  ├── [Dec 25  2021]  sa.key</span><br><span class="line">  └── [Dec 25  2021]  sa.pub</span><br><span class="line"></span><br><span class="line">  1 directory, 22 files</span><br><span class="line"><span class="comment"># 查看更新后的所有集群证书</span></span><br></pre></td></tr></table></figure>
+<p>🔗 上述 kubeadm-conf.yml 可参考此 <a href="https://github.com/Alberthua-Perl/kani/blob/main/files/kube-utils/kubeadm-conf.yml" target="_blank" rel="noopener">链接</a>，可根据自身的实际情况进行修改后运行。  </p>
+</li>
+<li><p>更新集群证书后，需更新集群 <code>kubeconfig</code> 配置文件：    </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">$ mkdir ~/kubeconfig-backup</span><br><span class="line">$ mv /etc/kubernetes/*.conf ~/kubeconfig-backup/</span><br><span class="line"><span class="comment"># 备份集群原始 kubeconfig 配置文件</span></span><br><span class="line"></span><br><span class="line">$ kubeadm init phase kubeconfig all --config ./kubeadm-conf.yml </span><br><span class="line">  W1213 21:53:42.328419   19385 strict.go:55] error unmarshaling configuration schema.GroupVersionKind&#123;Group:<span class="string">"kubelet.config.k8s.io"</span>, Version:<span class="string">"v1beta1"</span>, Kind:<span class="string">"KubeletConfiguration"</span>&#125;: error converting YAML to JSON: yaml: unmarshal errors:</span><br><span class="line">    line 27: key <span class="string">"cgroupDriver"</span> already <span class="built_in">set</span> <span class="keyword">in</span> map</span><br><span class="line">  [kubeconfig] Using kubeconfig folder <span class="string">"/etc/kubernetes"</span></span><br><span class="line">  [kubeconfig] Writing <span class="string">"admin.conf"</span> kubeconfig file</span><br><span class="line">  [kubeconfig] Writing <span class="string">"kubelet.conf"</span> kubeconfig file</span><br><span class="line">  [kubeconfig] Writing <span class="string">"controller-manager.conf"</span> kubeconfig file</span><br><span class="line">  [kubeconfig] Writing <span class="string">"scheduler.conf"</span> kubeconfig file</span><br><span class="line"><span class="comment"># 根据集群部署时使用的 kubeadm-conf.yml 配置文件重新生成集群 kubeconfig 配置文件</span></span><br><span class="line"></span><br><span class="line">$ ls -lh /etc/kubernetes/</span><br><span class="line">  total 36K</span><br><span class="line">  -rw------- 1 root root 5.6K Dec 13 21:53 admin.conf</span><br><span class="line">  -rw------- 1 root root 5.6K Dec 13 21:53 controller-manager.conf</span><br><span class="line">  -rw------- 1 root root 5.7K Dec 13 21:53 kubelet.conf</span><br><span class="line">  drwxr-xr-x 2 root root  113 Nov 22 00:40 manifests</span><br><span class="line">  drwxr-xr-x 3 root root 4.0K Dec 25  2021 pki</span><br><span class="line">  -rw------- 1 root root 5.5K Dec 13 21:53 scheduler.conf</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>更新完成后检查集群所有证书有效期：    </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">$ kubeadm certs check-expiration</span><br><span class="line"> [check-expiration] Reading configuration from the cluster...</span><br><span class="line"> [check-expiration] FYI: You can look at this config file with <span class="string">'kubectl -n kube-system get cm kubeadm-config -o yaml'</span></span><br><span class="line"></span><br><span class="line"> CERTIFICATE                EXPIRES                  RESIDUAL TIME   CERTIFICATE AUTHORITY   EXTERNALLY MANAGED</span><br><span class="line"> admin.conf                 Dec 13, 2023 13:53 UTC   364d                                    no      </span><br><span class="line"> apiserver                  Dec 13, 2023 13:45 UTC   364d            ca                      no      </span><br><span class="line"> apiserver-etcd-client      Dec 13, 2023 13:45 UTC   364d            etcd-ca                 no      </span><br><span class="line"> apiserver-kubelet-client   Dec 13, 2023 13:45 UTC   364d            ca                      no      </span><br><span class="line"> controller-manager.conf    Dec 13, 2023 13:53 UTC   364d                                    no      </span><br><span class="line"> etcd-healthcheck-client    Dec 13, 2023 13:45 UTC   364d            etcd-ca                 no      </span><br><span class="line"> etcd-peer                  Dec 13, 2023 13:45 UTC   364d            etcd-ca                 no      </span><br><span class="line"> etcd-server                Dec 13, 2023 13:45 UTC   364d            etcd-ca                 no      </span><br><span class="line"> front-proxy-client         Dec 13, 2023 13:45 UTC   364d            front-proxy-ca          no      </span><br><span class="line"> scheduler.conf             Dec 13, 2023 13:53 UTC   364d                                    no      </span><br><span class="line"></span><br><span class="line"> CERTIFICATE AUTHORITY   EXPIRES                  RESIDUAL TIME   EXTERNALLY MANAGED</span><br><span class="line"> ca                      Dec 23, 2031 13:09 UTC   9y              no      </span><br><span class="line"> etcd-ca                 Dec 23, 2031 13:09 UTC   9y              no      </span><br><span class="line"> front-proxy-ca          Dec 23, 2031 13:09 UTC   9y              no</span><br><span class="line"><span class="comment"># 集群所有证书有效期延期 1 年</span></span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+</li>
+<li><p>💥 需要注意的是，此时新生成的集群 <code>/etc/kubernetes/admin.conf</code> 配置文件嵌套新的证书，在集群外部或可使用 kubectl 命令连接至集群的节点上需使用该文件更新节点 <code>$HOME/.kube/config</code> 文件，否则无法连接至集群中，直接报错 <code>error: You must be logged in to the server (Unauthorized)</code>。</p>
+</li>
+</ul>
+<h3 id="参考文档："><a href="#参考文档：" class="headerlink" title="参考文档："></a>参考文档：</h3><ul>
+<li><a href="https://kubernetes.io/zh-cn/docs/tasks/administer-cluster/kubeadm/kubeadm-certs/" target="_blank" rel="noopener">Kubernetes Doc - 使用 kubeadm 进行证书管理</a></li>
+<li><a href="https://kubernetes.io/zh-cn/docs/setup/best-practices/certificates/" target="_blank" rel="noopener">Kubernetes Doc - PKI 证书和要求</a></li>
+<li><a href="https://www.cnblogs.com/skymyyang/p/11093686.html" target="_blank" rel="noopener">Kubeadm 证书过期时间调整</a></li>
+</ul>
+
+
+                <hr>
+
+                
+
+                <ul class="pager">
+                    
+                    
+                        <li class="next">
+                            <a href="/2022/12/19/rocketchat-mongodb-on-k8s/" data-toggle="tooltip" data-placement="top" title="Kubernetes 中部署 Rocket.Chat 与 MongoDB 实时交流平台">Next Post &rarr;</a>
+                        </li>
+                    
+                </ul>
+
+                
+
+                
+
+            </div>
+    <!-- Side Catalog Container -->
+        
+
+    <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5><a href="/tags/">FEATURED TAGS</a></h5>
+                    <div class="tags">
+                       
+                          <a class="tag" href="/tags/#云原生" title="云原生">云原生</a>
+                        
+                          <a class="tag" href="/tags/#Kubernetes" title="Kubernetes">Kubernetes</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+                <hr>
+                <h5>FRIENDS</h5>
+                <ul class="list-inline">
+
+                    
+                        <li><a href="https://github.com/Alberthua-Perl" target="_blank">Alberthua</a></li>
+                    
+                        <li><a href="https://github.com/xwanli0923" target="_blank">xwanli0923</a></li>
+                    
+                        <li><a href="https://github.com/rowheel" target="_blank">rowheel</a></li>
+                    
+                        <li><a href="undefined" target="_blank">万里的博客</a></li>
+                    
+                </ul>
+                
+            </div>
+
+        </div>
+    </div>
+</article>
+
+
+
+
+
+
+
+
+
+    <!-- Footer -->
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://github.com/Alberthua-Perl">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; Alberthua Blog 2022 
+                    <br>
+                    Theme by <a href="http://huangxuan.me">Hux</a> 
+                    <span style="display: inline-block; margin: 0 5px;">
+                        <i class="fa fa-heart"></i>
+                    </span> 
+                    Ported by <a href="http://blog.kaijun.rocks">Kaijun</a> | 
+                    <iframe
+                        style="margin-left: 2px; margin-bottom:-5px;"
+                        frameborder="0" scrolling="0" width="91px" height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=kaijun&repo=hexo-theme-huxblog&type=star&count=true" >
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/js/jquery.min.js"></script>
+
+<!-- Bootstrap Core JavaScript -->
+<script src="/js/bootstrap.min.js"></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/js/hux-blog.min.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- 
+     Because of the native support for backtick-style fenced code blocks 
+     right within the Markdown is landed in Github Pages, 
+     From V1.6, There is no need for Highlight.js, 
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0  
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/    
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("https://alberthua-perl.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("https://cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- Side Catalog -->
+
+
+
+
+
+<!-- Image to hack wechat -->
+<img src="https://alberthua-perl.github.io/img/icon_wechat.png" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work -->
+
+</body>
+
+</html>
