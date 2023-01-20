@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head><meta name="generator" content="Hexo 3.9.0">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="让我们一起探索世界！💪 | Thumbs Up for Cloud Native 🤘">
+    <meta name="keyword" content>
+    <link rel="shortcut icon" href="/img/favicon.ico">
+
+    <title>
+        
+          一文厘清 HTTPS 原理与应用 - Alberthua 的博客 | Alberthua&#39;s Blog
+        
+    </title>
+
+    <link rel="canonical" href="https://alberthua-perl.github.io/2023/01/20/https-handshake-authentication/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/hux-blog.min.css">
+
+    <!-- Pygments Highlight CSS -->
+    <link rel="stylesheet" href="/css/highlight.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="https://cdn.staticfile.org/font-awesome/4.5.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+
+    <!-- Hux Delete, sad but pending in China
+    <link href='http://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/
+    css'>
+    -->
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- ga & ba script hoook -->
+    <script></script>
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">Alberthua Blog</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+
+                    
+
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/about/">关于我</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/archives/">归档</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/tags/">分类</a>
+                        </li>
+                        
+                    
+                    
+                </ul>
+            </div>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+
+    <!-- Main Content -->
+    
+<!-- Image to hack wechat -->
+<!-- <img src="https://alberthua-perl.github.io/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="{{ site.baseurl }}/{% if page.header-img %}{{ page.header-img }}{% else %}{{ site.header-img }}{% endif %}" width="0" height="0"> -->
+
+<!-- Post Header -->
+<style type="text/css">
+    header.intro-header{
+        background-image: url('https-bg.png')
+    }
+</style>
+<header class="intro-header" >
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                          <a class="tag" href="/tags/#HTTPS" title="HTTPS">HTTPS</a>
+                        
+                    </div>
+                    <h1>一文厘清 HTTPS 原理与应用</h1>
+                    <h2 class="subheading">SSL/TLS handshake and HTTPS authrntication</h2>
+                    <span class="meta">
+                        Posted by Alberthua on
+                        2023-01-20
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <h3 id="文档说明："><a href="#文档说明：" class="headerlink" title="文档说明："></a>文档说明：</h3><ul>
+<li>OS 版本：<code>CentOS Linux release 7.9.2009 (Core)</code></li>
+<li>Kernel 版本：<code>4.20.3-1.el7.elrepo.x86_64</code></li>
+<li>OpenSSL 版本：<code>openssl-1.0.2k-21.el7_9.x86_64.rpm</code></li>
+<li>Docker 版本：<code>20.10.8</code></li>
+<li>Nginx 版本：<code>1.22.1</code></li>
+<li>✨ HTTPS 在常规 Web 服务器、中间件服务器及 <code>RESTful API</code> 等通信中广泛大量使用，因此理解 HTTPS 及相关概念显得尤为重要。</li>
+<li>该文档使用 openssl 工具创建与管理相关私钥与证书，当然也可使用 cfssl 或 certtool（来源于 gnutls-utils 软件包）工具创建与管理。</li>
+</ul>
+<h3 id="文档目录："><a href="#文档目录：" class="headerlink" title="文档目录："></a>文档目录：</h3><ul>
+<li>加密通信背景</li>
+<li>保证数据的机密性</li>
+<li>保证数据的真实性与完整性</li>
+<li>保证传输双方的身份验证</li>
+<li>数字签名原理</li>
+<li>SSL/TLS 与 CA 相关术语</li>
+<li>SSL/TLS 加密通信要点</li>
+<li>基于 SSL/TLS 加密连接的 HTTPS 单/双向认证</li>
+<li>HTTPS 单向认证的 Wireshark 抓包分析</li>
+<li>HTTPS 单向认证测试</li>
+<li>HTTPS 双向认证的 Wireshark 抓包与测试</li>
+<li>openssl 常用命令汇总</li>
+<li>openssl 使用数字签名证书的单双向连接测试</li>
+<li>参考链接</li>
+</ul>
+<h3 id="加密通信背景："><a href="#加密通信背景：" class="headerlink" title="加密通信背景："></a>加密通信背景：</h3><ul>
+<li>网络安全问题：<br>HTTP 不使用 SSL/TLS 进行加密通信，所有信息明文传播，带来了三大风险：  <ul>
+<li>窃听风险（eavesdropping）：第三方可以获知通信内容  </li>
+<li>篡改风险（tampering）：第三方可以修改通信内容  </li>
+<li>冒充风险（pretending）：第三方可以冒充他人身份参与通信</li>
+</ul>
+</li>
+<li>网络安全问题的解决思路：<code>SSL/TLS</code> 协议  <ul>
+<li>所有信息都是加密传播，第三方无法窃听。  </li>
+<li>具有校验机制，一旦被篡改，通信双方会立刻发现。  </li>
+<li>配备身份证书，防止身份被冒充。</li>
+</ul>
+</li>
+</ul>
+<h3 id="保证数据的机密性：不被窃听"><a href="#保证数据的机密性：不被窃听" class="headerlink" title="保证数据的机密性：不被窃听"></a>保证数据的机密性：不被窃听</h3><ul>
+<li>🧬 实现方式：对称加密算法</li>
+<li>💥 单纯的数据加密只能保证数据不被泄露，但不能保证接收方收到的数据的真实性。</li>
+</ul>
+<h3 id="保证数据的真实性与完整性：不被篡改"><a href="#保证数据的真实性与完整性：不被篡改" class="headerlink" title="保证数据的真实性与完整性：不被篡改"></a>保证数据的真实性与完整性：不被篡改</h3><ul>
+<li>数据的真实性：真实数据没有被篡改，数据是从真实发送者发来。</li>
+<li>🧬 实现方式：消息摘要算法（或称散列算法/单向散列函数）生成数据指纹（特征码）</li>
+<li>💥 利用提取数据指纹的方式，完成数据传输的完整性验证。</li>
+<li>🔒 实际的算法实现过程概要：  <ul>
+<li>给一段明文数据（plain text）加上数据信息指纹，这个指纹是通过结合数据信息进行相应算法获得的数据指纹。  </li>
+<li>接收方当收到数据信息后，会利用相同的算法对获取的数据计算指纹，确认得到的指纹是否与传送过来的描述数据的指纹一致。  </li>
+<li>如果一致，表示数据没有被篡改过；如果不一致，表示数据完整性遭到破坏，数据一概不予以接收处理。</li>
+</ul>
+</li>
+<li>由于可能存在中间人攻击的可能性，因此可对传输过程中的数据指纹进行加密。</li>
+<li>发送方利用对称密钥方式对手中的指纹进行加密，接收方会利用相同的密钥对手中的指纹进行解密，从而确认指纹是否一致。</li>
+<li>如果中间人将新的指纹也进行了加密，发送给接收方，但接收方无法利用和发送方协商好的解密密钥对指纹进行解密，最终无法识别中间人发送过来的数据指纹信息。</li>
+<li>🤘 通过加密指纹可以保证真实数据没有被篡改。</li>
+</ul>
+<h3 id="保证传输双方的身份验证："><a href="#保证传输双方的身份验证：" class="headerlink" title="保证传输双方的身份验证："></a>保证传输双方的身份验证：</h3><ul>
+<li>以上信息只是解决数据的交换获取问题，但是网络的身份验证问题依旧没有解决。</li>
+<li>🧬 实现方式：非对称加密</li>
+<li>利用非对称加密算法，可以有效解决网络中数据传输双方的安全身份验证问题。</li>
+<li>💥 非对称加密算法中，存在密钥对的概念，即拥有公钥（<code>public key</code>）与私钥（<code>private key</code>），其中公钥不是自行创建出来的而是从私钥中提取出来一部分作为公钥，因此可以说公钥是来自于私钥的，而私钥才决定密钥加密的安全性，并且私钥的长度可能会非常长，从最初的 1024、2048 到 4096 一直到更多的位数。增加私钥密钥位，从而提升密钥安全性。</li>
+<li>非对称加密算法遵循的基本原则：公钥加密的只能利用与之配对的私钥进行解密，反之亦然。</li>
+<li>非对称加密算法可以满足数据传输过程中对传输者身份验证的需求，因为接收者可以拥有相应的公钥，只有与之对应的发送者用相应的私钥进行加密信息，接收者用对应的公钥才可解密，否则可以确认发送者身份已经发生变化。</li>
+</ul>
+<h3 id="🦄-数字签名原理："><a href="#🦄-数字签名原理：" class="headerlink" title="🦄 数字签名原理："></a>🦄 数字签名原理：</h3><ul>
+<li><strong><font color="orange">公钥加密算法</font></strong> 解决通信双方身份验证问题，但无法确保公钥的真实性。</li>
+<li>因此，CA 数字签名使用证书授权中心（Certification Authority，简称 <code>CA</code>）解决通信双方交换的公钥的真实性，即数字证书的真实性（公钥包含于数字证书中）。</li>
+<li>数字签名证书的分类：  <ul>
+<li>自签名数字签名证书：<br>不使用 <code>ca.key</code> 加密生成签名，使用自身的私钥加密生成签名，如 <code>GnuPG</code> 邮件加密传输。  </li>
+<li>CA 数字签名证书：<br>使用 CA 证书授权中心的 <code>ca.key</code> 与 <code>ca.crt</code> 进行加密生成签名，如 <code>kube-apiserver</code>、Apache、Nginx、Tomcat 等，以下讨论该类型证书。</li>
+</ul>
+</li>
+<li>🧬 实现方式：<strong><font color="orange">公钥非对称加密算法 + 消息摘要算法</font></strong></li>
+<li>标准的 <code>X.509</code> 格式的 CA 数字签名证书组成：  <ul>
+<li>证书相关信息（C）：明文显示    <ul>
+<li>证书的版本信息（Version）    </li>
+<li>证书的序列号（Serial Number，<code>srl</code>）：每个证书都有一个唯一的证书序列号    </li>
+<li>证书所使用的签名算法：<code>sha256WithRSAEncryption</code>    </li>
+<li>证书的发行机构名称：命名规则一般采用 <code>X.500</code> 格式（目录服务协议 X.500）    </li>
+<li>⏱ 证书的有效期：现在通用的证书一般采用 UTC 时间格式，计时范围为 1950-2049。    </li>
+<li>证书所有人的名称：命名规则一般采用 <code>X.500</code> 格式    </li>
+<li>证书所有人的公钥信息    </li>
+<li>CA 数字签名校验码  </li>
+</ul>
+</li>
+<li>证书数字签名（S）：密文显示    <ul>
+<li>证书发行者（CA 证书授权中心）使用 CA 私钥加密生成签名</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>🔥 CA 数字签名证书生成过程：  </p>
+<ul>
+<li>该生成过程满足函数表达式：<code>S = F(Digest(C))</code></li>
+<li>其中 S 为证书数字签名，F 为签名算法，Digest 为消息摘要算法（MD5/SHA1/SHA256等），C 为证书相关信息。  </li>
+<li>1️⃣ 服务端或客户端创建各自的私钥，并使用该私钥创建 <code>csr</code> 证书签名请求。  </li>
+<li>2️⃣ 服务端或客户端的 <code>csr</code> 证书签名请求文件中包含证书相关信息 C 与相应的公钥信息。  </li>
+<li>3️⃣ 使用消息摘要算法对证书相关信息 C 生成相应指纹（fingerprint），再使用 CA 私钥（ca.key）配合 CA 根证书（ca.crt）加密该指纹，最后生成服务端或客户端的 CA 数字签名证书。  </li>
+<li>该 CA 数字签名只能被 CA 私钥（ca.key）对应位于 CA 根证书中的 CA 公钥解开。  </li>
+<li><p>创建过程如下所示：也可参考该 <a href="https://github.com/Alberthua-Perl/scripts-confs/blob/master/shell-examples/create-ssl-certs.sh" target="_blank" rel="noopener">链接</a> 以获得以下过程的完整脚本</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">$ openssl genrsa -out CA-center.key 2048</span><br><span class="line">$ openssl req -key CA-center.key \</span><br><span class="line">  -subj <span class="string">"/C=CN/ST=Shanghai/L=Shanghai/O=RedHat/OU=GLS/CN=CA-center.lab.example.com"</span> \</span><br><span class="line">  -new -x509 -days 3650 -out CA-center.crt</span><br><span class="line"><span class="comment"># 创建 CA 私钥与 CA 根证书（自签名）</span></span><br><span class="line">$ openssl x509 -noout -text -<span class="keyword">in</span> CA-center.crt</span><br><span class="line">  Certificate:</span><br><span class="line">    Data:</span><br><span class="line">        Version: 3 (0x2)</span><br><span class="line">        Serial Number:</span><br><span class="line">            fb:53:9c:3c:4d:81:f6:de</span><br><span class="line">    Signature Algorithm: sha256WithRSAEncryption</span><br><span class="line">        Issuer: C=CN, ST=Shanghai, L=Shanghai, O=RedHat, OU=GLS, CN=CA-center.lab.example.com</span><br><span class="line">        Validity</span><br><span class="line">            Not Before: Jan  2 14:04:46 2023 GMT</span><br><span class="line">            Not After : Dec 30 14:04:46 2032 GMT</span><br><span class="line">        Subject: C=CN, ST=Shanghai, L=Shanghai, O=RedHat, OU=GLS, CN=CA-center.lab.example.com</span><br><span class="line">        <span class="comment"># 由于使用 CA 私钥自签名生成的 CA 根证书，其证书发行机构与所有人相同。</span></span><br><span class="line">        Subject Public Key Info:</span><br><span class="line">            Public Key Algorithm: rsaEncryption</span><br><span class="line">                Public-Key: (2048 bit)</span><br><span class="line">                Modulus:</span><br><span class="line">                    00:bf:9a:3d:48:8c:b9:21:cb:d4:e5:30:df:4a:0e:</span><br><span class="line">                    05:e1:29:fe:5c:1f:06:4d:fb:89:fe:f5:01:c7:37:</span><br><span class="line">                    c5:ee:f5:66:8f:2f:bd:48:82:a1:80:1e:00:9d:a0:</span><br><span class="line">                    ...</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line">$ openssl genrsa -out server.key 2048</span><br><span class="line">$ openssl req -key server.key \</span><br><span class="line">  -subj <span class="string">"/C=CN/ST=Shanghai/L=Shanghai/O=RedHat/OU=GLS/CN=cloud-ctl.lab.example.com"</span> \</span><br><span class="line">  -new -out server.csr</span><br><span class="line">$ openssl req -noout -text -<span class="keyword">in</span> server.csr</span><br><span class="line">  Certificate Request:</span><br><span class="line">    Data:</span><br><span class="line">        Version: 0 (0x0)</span><br><span class="line">        Subject: C=CN, ST=Shanghai, L=Shanghai, O=RedHat, OU=GLS, CN=cloud-ctl.lab.example.com </span><br><span class="line">        <span class="comment"># 需签名服务端证书的所有人</span></span><br><span class="line">        Subject Public Key Info:  <span class="comment"># csr 证书签名请求中的公钥信息</span></span><br><span class="line">            Public Key Algorithm: rsaEncryption  <span class="comment"># 公钥加密算法：RSA（不对称加密）</span></span><br><span class="line">                Public-Key: (2048 bit)</span><br><span class="line">                Modulus:</span><br><span class="line">                    00:e0:bd:e9:ff:f5:16:e5:a9:94:9c:61:2f:27:c5:</span><br><span class="line">                    e9:76:a2:4b:e3:0f:1a:82:7d:7a:f1:bf:52:37:8d:</span><br><span class="line">                    54:ea:96:39:8c:c9:55:39:d6:5a:ac:03:2d:16:52:</span><br><span class="line">                    ...</span><br><span class="line"><span class="comment"># 创建与查看服务端私钥及 csr 证书签名请求文件</span></span><br><span class="line"></span><br><span class="line">$ openssl x509 -req -<span class="keyword">in</span> server.csr \</span><br><span class="line">  -CAkey CA-center.key -CA CA-center.crt -CAcreateserial \</span><br><span class="line">  -days 3650 -out server.crt</span><br><span class="line"><span class="comment"># 使用 CA 私钥与 CA 根证书签发服务端 CA 数字签名证书</span></span><br><span class="line">$ openssl x509 -noout -text -<span class="keyword">in</span> server.crt</span><br><span class="line">  Certificate:</span><br><span class="line">    Data:</span><br><span class="line">        Version: 1 (0x0)</span><br><span class="line">        Serial Number:</span><br><span class="line">            a9:68:e7:c4:87:87:4e:03</span><br><span class="line">    Signature Algorithm: sha256WithRSAEncryption</span><br><span class="line">        Issuer: C=CN, ST=Shanghai, L=Shanghai, O=RedHat, OU=GLS, CN=CA-center.lab.example.com </span><br><span class="line">        <span class="comment"># 服务端 CA 数字签名证书的发行机构（CA 证书授权中心）</span></span><br><span class="line">        Validity</span><br><span class="line">            Not Before: Jan  2 14:04:46 2023 GMT</span><br><span class="line">            Not After : Dec 30 14:04:46 2032 GMT</span><br><span class="line">        Subject: C=CN, ST=Shanghai, L=Shanghai, O=RedHat, OU=GLS, CN=cloud-ctl.lab.example.com</span><br><span class="line">        <span class="comment"># 服务端 CA 数字签名证书的所有人：服务端信息</span></span><br><span class="line">        Subject Public Key Info:</span><br><span class="line">            Public Key Algorithm: rsaEncryption</span><br><span class="line">                Public-Key: (2048 bit)</span><br><span class="line">                Modulus:</span><br><span class="line">                    00:e0:bd:e9:ff:f5:16:e5:a9:94:9c:61:2f:27:c5:</span><br><span class="line">                    e9:76:a2:4b:e3:0f:1a:82:7d:7a:f1:bf:52:37:8d:</span><br><span class="line">                    54:ea:96:39:8c:c9:55:39:d6:5a:ac:03:2d:16:52:</span><br><span class="line">                    ...</span><br><span class="line"><span class="comment"># 该数字签名证书中的服务端公钥信息与其 csr 证书签名请求文件中的相同</span></span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+</li>
+<li><p>客户端验证证书过程：  </p>
+<ul>
+<li>验证服务端 CA 数字签名：    <ul>
+<li>客户端需具有 CA 根证书（ca.crt）    </li>
+<li>客户端对服务端 CA 数字签名的验证满足表达式：<code>F&#39;(S) = Digest(C)</code></li>
+<li>客户端将执行两种计算，并将计算结果进行比对：<br>1️⃣ 由于证书相关信息（C）以明文显示，通过消息摘要算法计算 C 的哈希值。<br>2️⃣ 使用 CA 公钥解密由服务端通过 CA 私钥加密的 CA 数字签名，获得原始证书相关信息（C）的哈希值。<br>3️⃣ 若两者结果一致，说明证书有效且来自该 CA，未被篡改；若两者结果不一致，说明证书已被中间人篡改或不来自该 CA。  </li>
+</ul>
+</li>
+<li>提取服务端公钥：    <ul>
+<li>CA 数字签名验证通过后，客户端就可以提取出服务端 CA 数字签名证书中的公钥进行通信。    </li>
+<li>🤝 证书验证在 <code>SSL/TLS</code> 握手过程的 <code>Server Hello Done</code> 与 <code>Client Key Exchange</code> 之间。  </li>
+</ul>
+</li>
+<li>🚀 验证过程与原理，如下所示：<img src="ca-signed-certification-verify.jpg" alt></li>
+</ul>
+</li>
+</ul>
+<h3 id="SSL-TLS-与-CA-相关术语："><a href="#SSL-TLS-与-CA-相关术语：" class="headerlink" title="SSL/TLS 与 CA 相关术语："></a>SSL/TLS 与 CA 相关术语：</h3><ul>
+<li>证书标准：<code>X.509</code></li>
+<li>编码格式：  <ul>
+<li>✨ <code>PEM</code>：    <ul>
+<li>privacy enhanced Mail    </li>
+<li>纯文本形式的编码格式（Base64 编码），Apache 与 *nix 服务器偏向于使用该格式。  </li>
+</ul>
+</li>
+<li><code>DER</code>：    <ul>
+<li>distinguished encoding Rules    </li>
+<li>二进制形式的编码格式，Java 与 Windows 服务器偏向于使用该格式。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>证书（数字签名证书）：certificate（<code>CER</code> 或 <code>CRT</code>）</li>
+<li>私钥：private key</li>
+<li>👉 证书签名请求：  <ul>
+<li>certificate signing request: <code>CSR</code>  </li>
+<li>该文件使用私钥加密，包含公钥与签名申请者信息等。</li>
+</ul>
+</li>
+<li>CER 与 CRT 两者都为证书，CRT 在 Linux 上更常见。</li>
+<li>CER、CRT、KEY、CSR 都可为 PEM 或 DER 编码格式！</li>
+<li>支持 SSL/TLS 协议的开源工具：<code>openssl</code>、<code>cfssl</code>、<code>gnutls</code></li>
+<li>📚 man 查看以下命令：<br>openssl、genrsa、rsa、req、x509、verify、s_client、s_server</li>
+</ul>
+<h3 id="SSL-TLS-加密通信要点："><a href="#SSL-TLS-加密通信要点：" class="headerlink" title="SSL/TLS 加密通信要点："></a>SSL/TLS 加密通信要点：</h3><ul>
+<li>安全套接字层协议：Secure Socket Layer（SSL）</li>
+<li>传输层安全协议：Transport Layer Security（TLS）</li>
+<li>SSL/TLS 历史背景：  <ul>
+<li>1994 年，NetScape 公司设计了 SSL 协议的 1.0 版，但未发布。  </li>
+<li>1995 年，NetScape 公司发布 SSL 2.0 版，很快发现有严重漏洞。  </li>
+<li>1996 年，SSL 3.0 版问世，得到大规模应用。  </li>
+<li>1999 年，互联网标准化组织 ISOC 接替 NetScape 公司，发布了 SSL 的升级版 <code>TLS 1.0</code> 版。  </li>
+<li>2006 年和 2008 年，TLS 进行了两次升级，分别为 TLS 1.1 版和 TLS 1.2 版。  </li>
+<li>👉 最新的变动是 2011 年 <code>TLS 1.2</code> 的修订版。</li>
+</ul>
+</li>
+<li>TLS 与 SSL 之间的版本对应关系：  <ul>
+<li>TLS 1.0 对应 SSL 3.1  </li>
+<li>TLS 1.1 对应 SSL 3.2  </li>
+<li>TLS 1.2 对应 SSL 3.3</li>
+</ul>
+</li>
+<li>👉 一般主流浏览器都已经实现了 <code>TLS 1.2</code> 的支持。</li>
+<li>SSL/TLS 协议在网络模型中的位置：<img src="ssl-tls-in-network-stack.png" alt></li>
+<li>SSL/TLS 协议分为两部分：  <ul>
+<li>Handshake Protocol：<br>🤝 协商通信双方之后在本次会话中用于数据加密的会话密钥（<code>session key</code>），该过程为 “握手阶段”，其中会话密钥也称为协商密钥。  </li>
+<li>Record Protocol：<br>定义使用会话密钥加密的数据的传输格式。</li>
+</ul>
+</li>
+<li>SSL 层：<br>借助下层协议（TCP 层）的的信道安全地协商出一份会话密钥，并用此密钥来加密 HTTP 请求。</li>
+<li>TCP 层：  <ul>
+<li>与 Web server 的 443 端口建立连接，传递由 SSL 处理后的数据。  </li>
+<li>SSL 在 TCP 之上建立一个加密通道，通过这一层的数据经过了加密，因此达到保密的效果。</li>
+</ul>
+</li>
+<li>服务端本地与客户端本地的 SSL 套接字与 TCP 套接字的关系，如下所示：<img src="client-server-tcp-ssl-socket.png" alt></li>
+</ul>
+<h3 id="🚀-基于-SSL-TLS-加密连接的-HTTPS-单-双向认证："><a href="#🚀-基于-SSL-TLS-加密连接的-HTTPS-单-双向认证：" class="headerlink" title="🚀 基于 SSL/TLS 加密连接的 HTTPS 单/双向认证："></a>🚀 基于 SSL/TLS 加密连接的 HTTPS 单/双向认证：</h3><ul>
+<li>以上关于服务端 CA 数字签名证书的验证只是 HTTPS 通信中的一部分，需通过其他步骤共同完成 HTTPS 加密通信。</li>
+<li>HTTPS 加密通信认证分为两类：单向认证、双向认证</li>
+<li>单向认证中只需服务端提供服务端证书与私钥即可，而双向认证中服务端需提供证书与私钥外还需提供 CA 根证书（该证书用于客户端证书的签发），并且客户端需提供客户端证书与私钥。</li>
+<li>单向认证的过程，客户端从服务端下载服务端公钥证书进行验证，然后建立安全通信通道。</li>
+<li>双向认证的过程，客户端除了需要从服务端下载服务器的公钥证书进行验证外，还需要把客户端的公钥证书上传到服务端给服务端进行验证，等双方都认证通过了，才开始建立安全通信通道进行数据传输。</li>
+<li>👨‍🏫 <strong><font color="red">总结：</font></strong><br>无论 HTTPS 单向或双向认证都是客户端与服务端协商出 <strong><font color="red">会话密钥</font></strong> 与 <strong><font color="red">会话加密算法</font></strong> 的过程。</li>
+<li>✨ 以下从 HTTPS 抓包的角度说明 SSL/TLS 四次握手与 HTTPS 单/双向认证的详细过程：<img src="ssl-four-handshakes-https-single-and-mutual-authentication.png" alt>上图中 <strong>黑色箭头</strong> 表示双向认证过程中多出的步骤，其余过程为单向认证过程。</li>
+</ul>
+<h3 id="🧪-HTTPS-单向认证的-Wireshark-抓包分析："><a href="#🧪-HTTPS-单向认证的-Wireshark-抓包分析：" class="headerlink" title="🧪 HTTPS 单向认证的 Wireshark 抓包分析："></a>🧪 HTTPS 单向认证的 Wireshark 抓包分析：</h3><ul>
+<li>本例使用 <code>Nginx HTTPS</code> 服务测试 HTTPS（HTTP + SSL/TLS）加密通信。</li>
+<li>使用已配置服务端 CA 数字签名证书的 Nginx 容器测试 HTTPS 加密通信过程，并使用 <code>Wireshark</code> 抓包分析。</li>
+<li><p>构建 Nginx 容器使用的 <a href="https://github.com/Alberthua-Perl/dockerfile-s2i-demo/tree/master/nginx-ssl" target="_blank" rel="noopener">Dockerfile</a> 如下所示：  </p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># modified date: </span></span><br><span class="line"><span class="comment">#     - 2019-12-10: initial Dockerfile</span></span><br><span class="line"><span class="comment">#     - 2023-01-16: update nginx and add client ssl authentication</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">FROM</span> docker.io/library/centos:<span class="number">7.9</span>.<span class="number">2009</span></span><br><span class="line"><span class="keyword">MAINTAINER</span> lhua <span class="string">"hualongfeiyyy@163.com"</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># install nginx dependent packages</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> yum repolist &amp;&amp; \ </span></span><br><span class="line">    yum install -y gcc* &amp;&amp; \</span><br><span class="line">    yum install -y pcre-devel openssl openssl-devel &amp;&amp; \</span><br><span class="line">    yum clean all &amp;&amp; \</span><br><span class="line">    mkdir -p /application/nginx-<span class="number">1.22</span>.<span class="number">1</span> &amp;&amp; \</span><br><span class="line">    useradd -u <span class="number">1005</span> -M -s /sbin/nologin nginx</span><br><span class="line">    <span class="comment"># create nginx user to run nginx worker processes</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># copy nginx source package to container rootfs</span></span><br><span class="line"><span class="keyword">ADD</span><span class="bash"> nginx-1.22.1.tar.gz /tmp/</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># make install nginx </span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> <span class="built_in">cd</span> /tmp/nginx-1.22.1 &amp;&amp; \</span></span><br><span class="line"><span class="bash">    ./configure --user=nginx --group=nginx --prefix=/application/nginx-1.22.1 \</span></span><br><span class="line"><span class="bash">      --with-http_stub_status_module --with-http_ssl_module &amp;&amp; \</span></span><br><span class="line"><span class="bash">    make &amp;&amp; \</span></span><br><span class="line"><span class="bash">    make install &amp;&amp; \</span></span><br><span class="line"><span class="bash">    ln -s /application/nginx-1.22.1 /application/nginx &amp;&amp; \</span></span><br><span class="line"><span class="bash">    mkdir /application/nginx/conf/extra &amp;&amp; \</span></span><br><span class="line"><span class="bash">    mkdir /application/nginx/html/www &amp;&amp; \</span></span><br><span class="line"><span class="bash">    mkdir /application/nginx/key</span></span><br><span class="line">    <span class="comment"># create virtual server, html and key directory.</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># copy nginx configuration file, virtual server configuration file and certification file.</span></span><br><span class="line"><span class="keyword">ADD</span><span class="bash"> nginx.conf /application/nginx/conf/</span></span><br><span class="line"><span class="keyword">ADD</span><span class="bash"> www.conf /application/nginx/conf/extra/</span></span><br><span class="line"><span class="keyword">ADD</span><span class="bash"> index.html /application/nginx/html/www/</span></span><br><span class="line"><span class="keyword">ADD</span><span class="bash"> certs/server.key /application/nginx/key/</span></span><br><span class="line"><span class="keyword">ADD</span><span class="bash"> certs/server.crt /application/nginx/key/</span></span><br><span class="line"><span class="keyword">ADD</span><span class="bash"> certs/CA-center.crt /application/nginx/key/</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">EXPOSE</span> <span class="number">443</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># <span class="doctag">Note:</span> Don't run nginx as backend daemon</span></span><br><span class="line"><span class="keyword">CMD</span><span class="bash"> [<span class="string">"/application/nginx/sbin/nginx"</span>, <span class="string">"-g"</span>, <span class="string">"daemon off;"</span>]</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Nginx 容器使用的 <a href="https://github.com/Alberthua-Perl/dockerfile-s2i-demo/blob/master/nginx-ssl/www.conf" target="_blank" rel="noopener">配置文件</a>，如下所示：<br>✨ 该配置文件启用 HTTPS 单向认证，若需开启双向认证过程，只需启用 <code>ssl_client_certificate</code> 与 <code>ssl_verify_client</code> 参数即可。  </p>
+<figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Web Service: domain-based virtual machine</span></span><br><span class="line"><span class="section">server</span> &#123;</span><br><span class="line">    <span class="attribute">listen</span>  <span class="number">443</span>;</span><br><span class="line">    <span class="comment"># alias for domain-based virtual machine</span></span><br><span class="line">    <span class="attribute">server_name</span>  www.etiantian.org etiantian.org;</span><br><span class="line"></span><br><span class="line">    <span class="attribute">ssl</span>  <span class="literal">on</span>;  <span class="comment"># Nginx 启用 SSL/TLS 验证：指定服务端 CA 数字签名证书与私钥</span></span><br><span class="line">    <span class="comment"># enable openssl module to support SSL/TLS</span></span><br><span class="line">    <span class="attribute">ssl_certificate</span>  /application/nginx/key/server.crt;</span><br><span class="line">    <span class="comment"># server.crt 证书发送至客户端用于验证其身份，客户端使用其中的公钥加密</span></span><br><span class="line">    <span class="comment"># pre-master 第三个随机数并发送至服务端协商会话密钥。</span></span><br><span class="line">    <span class="attribute">ssl_certificate_key</span>  /application/nginx/key/server.key;</span><br><span class="line">    <span class="comment"># server.key 用于解密从客户端发送来的已加密的 pre-master 第三个随机数</span></span><br><span class="line">    <span class="comment">#ssl_client_certificate  /application/nginx/key/CA-center.crt;</span></span><br><span class="line">    <span class="comment">#ssl_verify_client  on;</span></span><br><span class="line">    <span class="comment"># 启用服务端对客户端 SSL/TLS 双向验证</span></span><br><span class="line">    <span class="comment"># 若只需服务端单向验证，无需启用 ssl_client_certificate 与 ssl_verify_client。</span></span><br><span class="line">    <span class="attribute">ssl_session_timeout</span>  <span class="number">5m</span>;</span><br><span class="line">    <span class="attribute">ssl_protocols</span>  TLSv1 TLSv1.<span class="number">1</span> TLSv1.<span class="number">2</span>;</span><br><span class="line">    <span class="attribute">ssl_ciphers</span>  ALL:!DH:!EXPORT:!RC4:+HIGH:+MEDIUM:-LOW:!aNULL:!eNULL;</span><br><span class="line">    <span class="attribute">ssl_prefer_server_ciphers</span>  <span class="literal">on</span>; </span><br><span class="line"></span><br><span class="line">    <span class="attribute">location</span> / &#123;</span><br><span class="line">        <span class="attribute">root</span>   html/www;</span><br><span class="line">        <span class="attribute">index</span>  index.html index.htm;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>抓包 HTTPS 加密通信的三个过程：TCP 建立连接、SSL/TLS 握手、SSL/TLS 加密通信</p>
+</li>
+<li>HTTPS 加密通信 - 抓包整体示意：<img src="wireshark-https-single-progress.png" alt></li>
+<li>🤝 HTTPS 加密通信 - 4 次握手过程示意：<img src="ssl-tls-single-authentication-progress.png" alt>👨‍💻 以下将握手过程分为 4 个阶段进行描述。</li>
+<li>1️⃣ HTTPS 加密通信 - 第 1 次握手过程：<code>Client Hello</code>  <ul>
+<li>客户端首先向服务端发送 Client Hello 的 SSL 握手信息。  </li>
+<li>Client Hello 握手信息中包含如下内容：    <ul>
+<li>客户端发起请求，以明文传输请求信息，包含版本信息、客户端随机数、加密套件候选列表、压缩算法候选列表、扩展字段等信息。    </li>
+<li>支持的最高 TLS 协议版本，从低到高依次 SSLv2、SSLv3、TLSv1、TLSv1.1、TLSv1.2，当前基本不再使用低于 TLSv1 的版本。    </li>
+<li>✨ 随机数 <code>random_C</code>，用于后续的会话密钥生成。    </li>
+<li>客户端支持的加密套件 <code>Cipher Suites</code> 列表，每个加密套件对应 TLS 原理中的四个功能的组合：      <ul>
+<li>认证算法 <code>Au</code>：身份验证      </li>
+<li>密钥交换算法 <code>KeyExchange</code>：（会话）密钥协商      </li>
+<li>对称加密算法 <code>Enc</code>：信息加密      </li>
+<li>信息摘要 <code>Mac</code>：完整性校验    </li>
+</ul>
+</li>
+<li>支持的压缩算法 <code>Compression Methods</code> 列表，用于后续的信息压缩传输。    </li>
+<li>扩展字段 Extensions，支持协议与算法的相关参数以及其它辅助信息等，常见的 SNI 就属于扩展字段。<img src="client-hello-body-1.png" alt>  </li>
+</ul>
+</li>
+<li>客户端支持的 17 种加密套件供服务端选择使用。<img src="client-hello-body-2.png" alt></li>
+</ul>
+</li>
+<li>2️⃣ HTTPS 加密通信 - 第 2 次握手过程：服务端给客户端回复的 4 条 SSL 握手信息<img src="server-response-to-client-ssl.png" alt><ul>
+<li><code>Server Hello</code>：    <ul>
+<li>服务端返回协商的信息结果，包括选择使用的协议版本、选择的加密套件、选择的压缩算法、随机数 <code>random_S</code> 等，其中随机数用于后续的密钥协商。    </li>
+<li>服务端选择 <strong><font color="orange">TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384</font></strong> 作为密钥交互的加密套件，该加密套件的名字在客户端发送给服务器的支持的 <code>17</code> 个列表中。    </li>
+<li>该加密套件包含：      <ul>
+<li>非对称加密（密钥交换算法）：<code>ECDHE + RSA</code>      </li>
+<li>对称加密算法：<code>AES + GCM</code>      </li>
+<li>消息摘要算法：<code>SHA-384</code>  </li>
+</ul>
+</li>
+</ul>
+</li>
+<li><code>Certificate</code>：该 SSL 握手信息中包含服务端 CA 数字签名证书<img src="server-ca-signed-certification.png" alt>  </li>
+<li><code>Server Key Exchange</code>：<br>使用 <code>EC Diffie-Hellman</code> 算法（<code>ECDHE</code>）实现服务端与客户端的密钥交换算法协商。<img src="server-key-exchange.png" alt><br>💥 对于使用 <code>DHE/ECDHE</code> 非对称密钥协商算法的 SSL 握手，将发送该类型握手。<code>RSA</code>、<code>DH</code>、<code>ECDH</code> 算法不会进行该 server key exchange 握手流程。 </li>
+<li><code>Server Hello Done</code>：通知客户端 Server Hello 信息发送结束<img src="server-hello-done.jpg" alt></li>
+</ul>
+</li>
+<li>3️⃣ HTTPS 加密通信 - 第 3 次握手过程：客户端给服务端回复 3 条 SSL 握手信息<img src="client-response-to-server-ssl.jpg" alt><ul>
+<li><code>Client Key Exchange</code>：    <ul>
+<li>服务端 CA 数字签名证书合法性验证通过后，客户端计算产生随机数字 <code>Pre-master</code>，并用服务端证书中的公钥加密，发送给服务端。<br>💥 注意：服务端证书合法性验证失败，SSL 握手即停止！    </li>
+<li>此时客户端已经获取全部的计算会话密钥需要的信息：<br>🚀 两个明文随机数 <code>random_C</code> 和 <code>random_S</code> 与自己计算产生的 <code>Pre-master</code>，计算得到会话密钥。  </li>
+</ul>
+</li>
+<li><code>Change Cipher Spec</code>：<br> 🚀 客户端通知服务端后续的通信都采用协商的 <strong><font color="red">会话密钥</font></strong> 和 <strong><font color="red">会话加密算法</font></strong> 进行加密通信。  </li>
+<li><code>Encrypted Handshake Message</code>：<br>结合之前所有通信参数的哈希值生成一段数据，采用会话密钥与加密算法进行加密，然后发送给服务器用于数据与握手验证。</li>
+</ul>
+</li>
+<li>4️⃣ HTTPS 加密通信 - 第 4 次握手过程：服务端给客户端回复 2 条 SSL 握手信息<img src="server-response-to-client-4-phase.png" alt><ul>
+<li><code>Change Cipher Spec</code>：    <ul>
+<li>服务端用私钥解密加密的 <code>Pre-master</code> 随机数，基于之前交换的两个明文随机数 random_C 和 random_S，计算得到会话密钥。    </li>
+<li>计算之前所有接收信息的哈希值，然后解密客户端发送的 <code>Encrypted Handshake Message</code>，验证会话密钥和数据的准确性。    </li>
+<li>Change Cipher Spec 验证通过之后，服务端同样发送 Change Cipher Spec 以告知客户端后续的通信都采用协商的会话密钥与算法进行加密通信。  </li>
+</ul>
+</li>
+<li><code>Encrypted Handshake Message</code>：    <ul>
+<li>服务器也结合所有当前的通信参数信息生成一段数据并采用会话密钥与加密算法进行加密，并发送到客户端。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>HTTPS 加密通信 - 握手结束：  <ul>
+<li>客户端计算所有接收信息的哈希值，并采用会话密钥解密 Encrypted Handshake Message，验证服务器发送的会话密钥和数据，验证通过则握手完成。  </li>
+<li>开始使用会话密钥与加密算法进行加密通信。<img src="ssl-tls-handshake-end.png" alt></li>
+</ul>
+</li>
+</ul>
+<h3 id="HTTPS-单向认证测试："><a href="#HTTPS-单向认证测试：" class="headerlink" title="HTTPS 单向认证测试："></a>HTTPS 单向认证测试：</h3><ul>
+<li>服务端启用 HTTPS 单向认证后，可从浏览器客户端进行访问测试：<img src="https-single-auth-chrome-error-1.png" alt></li>
+<li>该服务端 CA 数字签名使用未经认证的 CA 签发，因此客户端浏览器无法验证其安全性而发出警告，可点击 “高级” 按钮接受该证书继续访问。若拒绝该证书，即断开此次认证连接，可在如下 Wireshark 抓包中显示安全告警信息：<img src="https-single-auth-chrome-error-2.png" alt> </li>
+</ul>
+<h3 id="HTTPS-双向认证的-Wireshark-抓包与测试："><a href="#HTTPS-双向认证的-Wireshark-抓包与测试：" class="headerlink" title="HTTPS 双向认证的 Wireshark 抓包与测试："></a>HTTPS 双向认证的 Wireshark 抓包与测试：</h3><ul>
+<li>HTTPS 双向认证的 Wireshark 抓包过程如下所示，其中具体的步骤参见前文 “SSL/TLS 四次握手与 HTTPS 单/双向认证的详细过程” 与单向认证的过程。<img src="wireshark-https-single-progress.png" alt></li>
+<li><p>HTTPS 双向认证过程的客户端测试：  </p>
+<ul>
+<li><p>配置生成客户端所需的数字签名证书与私钥：    </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">$ openssl genrsa -out client.key 2048</span><br><span class="line">$ openssl req -key client.key \</span><br><span class="line">  -subj <span class="string">"/C=CN/ST=Shanghai/L=Shanghai/O=RedHat/OU=GLS/CN=firefox"</span> \</span><br><span class="line">  -new -out client.csr</span><br><span class="line">$ openssl x509 -req -<span class="keyword">in</span> client.csr \</span><br><span class="line">  -CAkey CA-center.key -CA CA-center.crt -CAcreateserial \</span><br><span class="line">  -days 3650 -out client.crt</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>若将客户端数字签名证书与私钥用于 <code>Firefox</code> 或 <code>Chrome</code> 浏览器访问服务端，可将其转换为 <code>p12</code> 格式：    </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ openssl pkcs12 -<span class="built_in">export</span> -clcerts \</span><br><span class="line">  -<span class="keyword">in</span> client.crt -inkey client.key -out client.p12</span><br><span class="line"><span class="comment"># 创建 client.p12 文件时将交互式输入加密密码</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>将 p12 格式的文件导入 Firefox 浏览器客户端：<img src="firefox-import-pc12-certs-1.png" alt><img src="firefox-import-pc12-certs-2.png" alt><img src="firefox-import-pc12-certs-3.png" alt><img src="firefox-import-pc12-certs-4.png" alt></p>
+</li>
+<li>打开 Firefox 浏览器访问服务端，此时需接受客户端证书来标记自己：<img src="firefox-import-pc12-certs-5.png" alt>  </li>
+<li>💥 若双向认证客户端配置错误，将无法正常访问服务端，并且浏览器直接返回如下信息，且 Wireshark 抓包显示 <code>Encrypted Alert</code>：<img src="https-mutual-no-client-cert-error-1.png" alt><img src="https-mutual-no-client-cert-error-2.png" alt></li>
+</ul>
+</li>
+</ul>
+<h3 id="openssl-常用命令汇总："><a href="#openssl-常用命令汇总：" class="headerlink" title="openssl 常用命令汇总："></a>openssl 常用命令汇总：</h3><ul>
+<li><p><code>openssl req</code> 命令选项：创建 <code>csr</code> 证书签名请求与数字签名证书（或自签名证书）  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">-key               指定用于创建 csr 证书签名请求的私钥            </span><br><span class="line">-newkey alg:nbits  创建新的 csr 证书签名请求与私钥，指定加密算法与加密位数</span><br><span class="line">                  （通常为 rsa:2048）。             </span><br><span class="line">-nodes             不使用密码为新创建的私钥加密</span><br><span class="line">-keyout            指定新创建私钥的文件名</span><br><span class="line">-sha256            使用 SHA-256 摘要（创建自签名数字证书时使用）</span><br><span class="line">-subj              指定创建 csr 证书签名请求与数字签名证书所需的详细信息若未指定</span><br><span class="line">                   该选项，将进入交互模式。</span><br><span class="line">-new               生成新的 csr 证书签名请求</span><br><span class="line">-x509              生成数字签名证书（不生成证书签名请求）</span><br><span class="line">-days              指定数字签名证书的合法时间（有效期），默认 30 天。</span><br><span class="line">-out               指定输出的 csr 证书签名请求或数字签名证书的名称</span><br></pre></td></tr></table></figure>
+</li>
+<li><p><code>openssl x509</code> 命令选项：创建与查看数字签名证书  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">-req             指定 csr 证书签名请求，与 -<span class="keyword">in</span> 选项合用。                </span><br><span class="line">-<span class="keyword">in</span>              指定输入文件</span><br><span class="line">-CAkey           指定用于签署证书的 CA 私钥</span><br><span class="line">-CA              指定用于签署证书的 CA 根证书</span><br><span class="line">-CAcreateserial  创建 CA 序列号文件，扩展名为 <span class="string">".srl"</span>，该选项必须与 -CA 选项合用。</span><br><span class="line">-days            指定数字签名证书的合法时间（有效期），默认 30 天，不与</span><br><span class="line">                 -preserve_dates 选项合用。</span><br><span class="line">-out             指定输出的数字签名证书名称</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>创建自签名数字证书的 2 种方法：  </p>
+<ul>
+<li>1️⃣ 先创建私钥再创建自签名数字证书  </li>
+<li>2️⃣ 同时创建私钥与自签名数字证书    <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ openssl req -newkey rsa:4096 -nodes -keyout server.key \</span><br><span class="line">  -sha256 -subj <span class="string">"/C=CN/ST=Shanghai/L=Shanghai/O=RedHat/OU=GLS/CN=cloud-ctl.lab.example.com"</span> \</span><br><span class="line">  -x509 -days 3650 -out server.crt</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+</li>
+<li><p>创建 CA RSA 私钥与 CA 根证书（root-ca）：  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">$ openssl genrsa [-des3] -out ca.key [1024|2048|4096]</span><br><span class="line"><span class="comment"># 创建 CA RSA 私钥</span></span><br><span class="line"><span class="comment"># -des3 选项：交互输入密码为 RSA 私钥加密</span></span><br><span class="line"></span><br><span class="line">$ openssl req -key ca.key \</span><br><span class="line">  -subj <span class="string">"/C=CN/ST=Shanghai/L=Shanghai/O=RedHat/OU=GLS/CN=CA-center.lab.example.com"</span> \</span><br><span class="line">  -new -x509 \</span><br><span class="line">  -days 3650 -out ca.crt</span><br><span class="line"><span class="comment"># 创建 CA 自签名根证书</span></span><br><span class="line"></span><br><span class="line">$ openssl rsa -<span class="keyword">in</span> ca.key -text -noout</span><br><span class="line"><span class="comment"># 查看 CA RSA 私钥的详细信息</span></span><br><span class="line"></span><br><span class="line">$ openssl x509 -<span class="keyword">in</span> ca.crt -text -noout</span><br><span class="line"><span class="comment"># 查看 CA 根证书的详细信息</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>基于 CA 根证书创建 server 端数字签名证书：  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">$ openssl genrsa [-des3] -out server.key [1024|2048|4096]</span><br><span class="line"><span class="comment"># 创建 server 端 RSA 私钥</span></span><br><span class="line"></span><br><span class="line">$ openssl rsa -<span class="keyword">in</span> server.key -pubout -out server.pub</span><br><span class="line"><span class="comment"># 提取 server 端 RSA 私钥对应的公钥（公钥由私钥中提取）</span></span><br><span class="line"></span><br><span class="line">$ openssl req -key server.key \</span><br><span class="line">  -subj <span class="string">"/C=CN/ST=Shanghai/L=Shanghai/O=RedHat/OU=GLS/CN=cloud-ctl.lab.example.com"</span> \</span><br><span class="line">  -new -out server.csr</span><br><span class="line"><span class="comment"># 创建 server 端证书签名请求（certificate signing request）</span></span><br><span class="line"><span class="comment"># 注意：</span></span><br><span class="line"><span class="comment">#   1. 创建 csr 不使用 -x509 与 -days 选项</span></span><br><span class="line"><span class="comment">#   2. 在创建生成服务端与客户端证书签名请求时均要注意以下三点：</span></span><br><span class="line"><span class="comment">#      a. CA 根证书的 Common Name 填写 root 即可，所有服务端和客户端的证书该字段</span></span><br><span class="line"><span class="comment">#         需要填写 IP 或域名。</span></span><br><span class="line"><span class="comment">#      b. 一定要注意的是，CA 根证书的该字段和服务端证书、客户端证书不能一样。</span></span><br><span class="line"><span class="comment">#      c. 其他所有字段的填写，CA 根证书、服务端证书、客户端证书需保持一致，最后的密码</span></span><br><span class="line"><span class="comment">#         可直接回车跳过。</span></span><br><span class="line"></span><br><span class="line">$ openssl req -noout -text -<span class="keyword">in</span> server.csr</span><br><span class="line"><span class="comment"># 查看 server 端证书签名请求的详细信息</span></span><br><span class="line"></span><br><span class="line">$ openssl x509 -req -<span class="keyword">in</span> server.csr \</span><br><span class="line">  -CAkey ca.key -CA ca.crt -CAcreateserial \</span><br><span class="line">  -days 3650 -out server.crt</span><br><span class="line"><span class="comment"># 使用 server 端 csr 证书签名请求、CA RSA 私钥与 CA 根证书创建 server 端数字签名证书</span></span><br><span class="line"></span><br><span class="line"><span class="comment">### 查看 server 端数字签名证书的相关信息 ###</span></span><br><span class="line">$ openssl x509 -noout -serial -<span class="keyword">in</span> server.crt</span><br><span class="line"><span class="comment"># 查看 server 端数字签名证书的序列号</span></span><br><span class="line">$ openssl x509 -noout -dates -<span class="keyword">in</span> server.crt</span><br><span class="line"><span class="comment"># 查看 server 端数字签名证书的有效期</span></span><br><span class="line">$ openssl x509 -noout -pubkey -<span class="keyword">in</span> server.crt</span><br><span class="line"><span class="comment"># 查看 server 端数字签名证书中的公钥信息，该公钥与私钥中提取的公钥一致。</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>基于 CA 根证书创建 client 端数字签名证书：  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">$ openssl genrsa [-des3] -out client.key [1024|2048|4096]</span><br><span class="line"><span class="comment"># 创建 client 端 RSA 私钥</span></span><br><span class="line"></span><br><span class="line">$ openssl req -key client.key \</span><br><span class="line">  -subj <span class="string">"/C=CN/ST=Shanghai/L=Shanghai/CN=sec-srv.lab.example.com"</span> \</span><br><span class="line">  -new -out client.csr</span><br><span class="line"><span class="comment"># 创建 client 端证书签名请求</span></span><br><span class="line"></span><br><span class="line">$ openssl x509 -req -<span class="keyword">in</span> client.csr \</span><br><span class="line">  -CAkey ca.key -CA ca.crt -CAcreateserial \</span><br><span class="line">  -days 3650 -out client.crt</span><br><span class="line"><span class="comment"># 使用证书签名请求、CA RSA 私钥与 CA 根证书创建 client 端数字签名证书</span></span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<h3 id="openssl-使用数字签名证书的单双向连接测试："><a href="#openssl-使用数字签名证书的单双向连接测试：" class="headerlink" title="openssl 使用数字签名证书的单双向连接测试："></a>openssl 使用数字签名证书的单双向连接测试：</h3><ul>
+<li><p>使用 server 端数字签名证书进行单向连接测试：  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">$ openssl s_server -accept &lt;port&gt; -key server.key -cert server.crt    </span><br><span class="line"><span class="comment"># server 端：启动单向安全连接，启动后将等待 client 端发送信息并回显</span></span><br><span class="line">$ openssl s_client -connect &lt;host_ip&gt;:&lt;port&gt;</span><br><span class="line"><span class="comment"># client 端：连接 server 端，若连接成功后将在任意一端输入信息后会在另一端显示该信息。</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>使用 server 端与 client 端数字签名证书进行双向连接测试：  </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">$ openssl s_server -accept &lt;port&gt; \</span><br><span class="line">  -key server.key -cert server.crt -Verify &lt;depth&gt;</span><br><span class="line"><span class="comment"># server 端：强制要求 client 端提供私钥与 client 端数字签名证书进行安全连接</span></span><br><span class="line">$ openssl s_server -accept 10001 \</span><br><span class="line">  -key server.key -cert server.crt -Verify 5</span><br><span class="line"></span><br><span class="line">$ openssl s_client -connect &lt;host_ip&gt;:&lt;port&gt; \</span><br><span class="line">  -key client.key -cert client.crt</span><br><span class="line"><span class="comment"># client 端：连接 server 端，若连接成功后将在任意一端输入信息后会在另一端显示该信息。</span></span><br><span class="line">$ openssl s_client \</span><br><span class="line">  -connect 10.197.11.100:10001 -key client.key -cert client.crt</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<h3 id="参考链接："><a href="#参考链接：" class="headerlink" title="参考链接："></a>参考链接：</h3><ul>
+<li><a href="https://www.wosign.com/FAQ/faq2016-0309-04.htm" target="_blank" rel="noopener">HTTPS 加密协议详解 (四)：TLS/SSL 握手过程</a></li>
+<li><a href="https://blog.csdn.net/mrpre/article/details/77867831" target="_blank" rel="noopener">TLS/SSL 协议详解(12) server key exchange</a></li>
+<li><a href="https://help.aliyun.com/document_detail/160093.html" target="_blank" rel="noopener">什么是 HTTPS 双向认证(MutualTLSauthentication)_API 网关 - 阿里云帮助中心</a></li>
+<li><a href="https://blog.xizhibei.me/2021/02/03/https-two-way-authentication-with-certificates/" target="_blank" rel="noopener">HTTPS 双向证书认证</a></li>
+<li><a href="https://www.cnblogs.com/xiao987334176/p/11041241.html" target="_blank" rel="noopener">NGINX 配置本地 HTTPS (双向认证)</a></li>
+<li><a href="https://blog.csdn.net/justinjing0612/article/details/7770301" target="_blank" rel="noopener">常见证书格式和转换</a></li>
+<li><a href="https://www.cnblogs.com/lzjsky/archive/2010/11/14/1877143.html" target="_blank" rel="noopener">常见证书格式及相互转换</a></li>
+<li><a href="https://www.cnblogs.com/threegun/p/7130985.html" target="_blank" rel="noopener">openssl 生成自签证书及查看证书细节</a></li>
+</ul>
+
+
+                <hr>
+
+                
+
+                <ul class="pager">
+                    
+                    
+                        <li class="next">
+                            <a href="/2022/12/29/kubeadm-update-k8s-certs/" data-toggle="tooltip" data-placement="top" title="kubeadm 更新 Kubernetes 集群到期证书">Next Post &rarr;</a>
+                        </li>
+                    
+                </ul>
+
+                
+
+                
+
+            </div>
+    <!-- Side Catalog Container -->
+        
+
+    <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5><a href="/tags/">FEATURED TAGS</a></h5>
+                    <div class="tags">
+                       
+                          <a class="tag" href="/tags/#HTTPS" title="HTTPS">HTTPS</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+                <hr>
+                <h5>FRIENDS</h5>
+                <ul class="list-inline">
+
+                    
+                        <li><a href="https://github.com/Alberthua-Perl" target="_blank">Alberthua</a></li>
+                    
+                        <li><a href="https://github.com/xwanli0923" target="_blank">xwanli0923</a></li>
+                    
+                        <li><a href="https://github.com/rowheel" target="_blank">rowheel</a></li>
+                    
+                        <li><a href="undefined" target="_blank">万里的博客</a></li>
+                    
+                </ul>
+                
+            </div>
+
+        </div>
+    </div>
+</article>
+
+
+
+
+
+
+
+
+
+    <!-- Footer -->
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://github.com/Alberthua-Perl">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; Alberthua Blog 2023 
+                    <br>
+                    Theme by <a href="http://huangxuan.me">Hux</a> 
+                    <span style="display: inline-block; margin: 0 5px;">
+                        <i class="fa fa-heart"></i>
+                    </span> 
+                    Ported by <a href="http://blog.kaijun.rocks">Kaijun</a> | 
+                    <iframe
+                        style="margin-left: 2px; margin-bottom:-5px;"
+                        frameborder="0" scrolling="0" width="91px" height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=kaijun&repo=hexo-theme-huxblog&type=star&count=true" >
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/js/jquery.min.js"></script>
+
+<!-- Bootstrap Core JavaScript -->
+<script src="/js/bootstrap.min.js"></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/js/hux-blog.min.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- 
+     Because of the native support for backtick-style fenced code blocks 
+     right within the Markdown is landed in Github Pages, 
+     From V1.6, There is no need for Highlight.js, 
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0  
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/    
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("https://alberthua-perl.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("https://cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- Side Catalog -->
+
+
+
+
+
+<!-- Image to hack wechat -->
+<img src="https://alberthua-perl.github.io/img/icon_wechat.png" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work -->
+
+</body>
+
+</html>
