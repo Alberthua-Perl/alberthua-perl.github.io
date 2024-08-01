@@ -83,6 +83,10 @@ friends: [
         href: "https://www.jiwenkang.com/"
     },
     {
+        title: "小菜园",
+        href: "https://www.imxcai.com/"
+    },
+    {
         title: "xwanli0923",
         href: "https://github.com/xwanli0923"
     },
@@ -156,4 +160,4 @@ theme: huxblog
 deploy:
   type: git
   repo: git@github.com:Alberthua-Perl/alberthua-perl.github.io.git
-  branch: main
+  branch: blog-origin
