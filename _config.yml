@@ -11,14 +11,13 @@ timezone: Asia/Shanghai
 
 # URL
 ## If your site is put in a subdirectory, set url as 'http://yoursite.com/child' and root as '/child/'
-#url: http://kaijun.rocks/hexo-theme-huxblog
 url: https://alberthua-perl.github.io
-#root: /hexo-theme-huxblog/
 root: ""
 permalink: :year/:month/:day/:title/
 permalink_defaults:
 
-#Custom Setting Start
+# Custom Setting Start
+
 
 # Site settings
 SEOTitle: Alberthua 的博客 | Alberthua's Blog
@@ -26,7 +25,6 @@ header-img: img/home-bg.jpg
 email: hualongfeiyyy@163.com
 description: "让我们一起探索世界！💪 | Thumbs Up for Cloud Native 🤘"
 keyword: ""
-
 
 # SNS settings
 # RSS: false
@@ -42,10 +40,9 @@ exclude: ["node_modules", "package.json", "Gruntfile.js", "less", "README.md", "
 # 故障点：
 #   由于 GitHub Page 构建使用的 Jekyll 从 v3.3 版本开始忽略构建目录中的 node_modules 目录，
 #   因此需使用 exclude 参数指定 node_modules 目录，否则构建与部署无报错出现，但访问的页面为大片空白。
-#anchorjs: true                          # if you want to customize anchor. check out line:181 of `post.html`
+#anchorjs: true    # if you want to customize anchor. check out line:181 of `post.html`
 anchorjs: false
 # 去除每级标题的锚定符
-
 
 # Disqus settings
 #disqus_username: "hexo-theme-huxblog"
@@ -54,30 +51,26 @@ disqus_username: ""
 # Duoshuo settings
 # duoshuo_username: kaijun
 # Share component is depend on Comment so we can NOT use share only.
-duoshuo_share: true                     # set to false if you want to use Comment without Sharing
-
+duoshuo_share: true    # set to false if you want to use Comment without Sharing
 
 # Analytics settings
 # Baidu Analytics
 #ba_track_id: 4cc1f2d8f3067386cc5cdb626a202900
 ba_track_id: ""
 # Google Analytics
-#ga_track_id: 'UA-49627206-1'           # Format: UA-xxxxxx-xx
+#ga_track_id: 'UA-49627206-1'    # Format: UA-xxxxxx-xx
 ga_track_id: ""
 #ga_domain: huangxuan.me
 ga_domain: "github.io"
 
-
 # Sidebar settings
-sidebar: true                           # whether or not using Sidebar.
-sidebar-about-description: "奔跑吧少年✊ 尽情享受沿途的美景🏃‍♂️🌳🌾🍂☃"
-sidebar-avatar: img/avatar.jpg         # use absolute URL, seeing it's used in both `/` and `/about/`
-
+sidebar: true    # whether or not using Sidebar.
+sidebar-about-description: "吾等只管努力💪但求无愧于心🤘有缘江湖相见😎🤟"
+sidebar-avatar: img/avatar.jpg    # use absolute URL, seeing it's used in both `/` and `/about/`
 
 # Featured Tags
-featured-tags: true                     # whether or not using Feature-Tags
-featured-condition-size: 1              # A tag will be featured if the size of it is more than this condition value
-
+featured-tags: true           # whether or not using Feature-Tags
+featured-condition-size: 1    # A tag will be featured if the size of it is more than this condition value
 
 # Friends
 friends: [
@@ -86,22 +79,28 @@ friends: [
         href: "https://github.com/Alberthua-Perl"
     },
     {
+        title: "Wenkan Ji Blog (RedHat Virt)",
+        href: "https://www.jiwenkang.com/"
+    },
+    {
         title: "xwanli0923",
         href: "https://github.com/xwanli0923"
     },
     {
-        title: "rowheel",
+        title: "rowheel (AMD Driver)",
         href: "https://github.com/rowheel"
     },
     {
         title: "万里的博客",
-        herf: "https://xwanli0923.github.io/"
+        href: "https://xwanli0923.github.io/"
+    },
+    {
+        title: "Xiaolai Blog",
+        href: "https://imlai.club/"
     }
 ]
 
-
 #Custom Setting End
-
 
 
 # Directory
@@ -115,10 +114,10 @@ i18n_dir: :lang
 skip_render:
 
 # Writing
-new_post_name: :title.md # File name of new posts
+new_post_name: :title.md    # File name of new posts
 default_layout: post
-titlecase: false # Transform title into titlecase
-external_link: true # Open external links in new tab
+titlecase: false        # Transform title into titlecase
+external_link: true     # Open external links in new tab
 filename_case: 0
 render_drafts: false
 post_asset_folder: true
